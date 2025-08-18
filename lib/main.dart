@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
-import 'presentation/screens/grocery_list_screen.dart';
+import 'presentation/screens/grocery_lists_home_screen.dart'; // Updated for CR1
 import 'presentation/providers/app_providers.dart';
 
 void main() {
@@ -26,7 +26,8 @@ class MyApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: const GroceryListScreen(),
+      home:
+          const GroceryListsHomeScreen(), // Updated for CR1 - show home screen first
     );
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/repositories/items_repository.dart';
 import '../../data/repositories/csv_repository.dart';
 import '../../data/repositories/grocery_lists_repository.dart'; // Added for CR1
@@ -193,18 +192,6 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
     }
   }
 
-  Future<void> deleteAllItems() async {
-    try {
-      final currentItems = state.value ?? [];
-      if (currentItems.isEmpty) return;
-
-      final allIds = currentItems.map((item) => item.id!).toList();
-      await deleteMultipleItems(allIds);
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
-    }
-  }
-
   Future<void> reorderItems(List<GroceryItem> items) async {
     try {
       final reindexedItems = _reindexItems(items);
@@ -276,105 +263,12 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
       clearSelection();
     }
   }
-
-  // Added missing methods for compatibility
-  void toggleSelectAll() {
-    if (allSelected) {
-      clearSelection();
-    } else {
-      selectAll();
-    }
-  }
-
-  Future<void> toggleAllNeeded() async {
-    final items = state.value ?? [];
-    if (items.isEmpty) return;
-
-    // Check if all items are needed
-    final allNeeded = items.every((item) => item.needed);
-
-    // Toggle all items to opposite state
-    final futures = items.map((item) async {
-      final updatedItem = item.copyWith(needed: !allNeeded);
-      await updateItem(updatedItem);
-    });
-
-    await Future.wait(futures);
-  }
-
-  Future<void> toggleItemNeeded(int itemId) async {
-    final items = state.value ?? [];
-    final itemIndex = items.indexWhere((item) => item.id == itemId);
-
-    if (itemIndex != -1) {
-      final item = items[itemIndex];
-      final updatedItem = item.copyWith(needed: !item.needed);
-      await updateItem(updatedItem);
-    }
-  }
-
-  Future<int> getNextPosition() async {
-    final items = state.value ?? [];
-    if (items.isEmpty) return 1;
-    return items.map((item) => item.position).reduce((a, b) => a > b ? a : b) +
-        1;
-  }
-
-  Future<void> saveAllItems(List<GroceryItem> items) async {
-    try {
-      await _repository.saveAll(items);
-      if (_currentListId != null) {
-        await loadItemsForList(_currentListId!);
-      } else {
-        await loadItems();
-      }
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
-    }
-  }
 }
 
 final itemsProvider =
     StateNotifierProvider<ItemsNotifier, AsyncValue<List<GroceryItem>>>((ref) {
   final repository = ref.watch(itemsRepositoryProvider);
   return ItemsNotifier(repository);
-});
-
-// Selection state providers
-final selectedCountProvider = Provider<int>((ref) {
-  final itemsNotifier = ref.watch(itemsProvider.notifier);
-  ref.watch(itemsProvider); // Watch for state changes
-  return itemsNotifier.selectedCount;
-});
-
-final neededCountProvider = Provider<int>((ref) {
-  final itemsAsync = ref.watch(itemsProvider);
-  return itemsAsync.when(
-    data: (items) => items.where((item) => item.needed).length,
-    loading: () => 0,
-    error: (_, __) => 0,
-  );
-});
-
-final allSelectedProvider = Provider<bool>((ref) {
-  final itemsNotifier = ref.watch(itemsProvider.notifier);
-  ref.watch(itemsProvider); // Watch for state changes
-  return itemsNotifier.allSelected;
-});
-
-final allNeededProvider = Provider<bool>((ref) {
-  final itemsAsync = ref.watch(itemsProvider);
-  return itemsAsync.when(
-    data: (items) => items.isNotEmpty && items.every((item) => item.needed),
-    loading: () => false,
-    error: (_, __) => false,
-  );
-});
-
-final hasSelectionProvider = Provider<bool>((ref) {
-  final itemsNotifier = ref.watch(itemsProvider.notifier);
-  ref.watch(itemsProvider); // Watch for state changes
-  return itemsNotifier.hasSelection;
 });
 
 // Last saved provider
@@ -393,16 +287,12 @@ class AppState {
   final AppSort sort;
   final bool isSearching;
   final String searchQuery;
-  final bool isSaving;
-  final bool hasUnsavedChanges;
 
   const AppState({
     this.filter = AppFilter.all,
     this.sort = AppSort.position,
     this.isSearching = false,
     this.searchQuery = '',
-    this.isSaving = false,
-    this.hasUnsavedChanges = false,
   });
 
   AppState copyWith({
@@ -410,16 +300,12 @@ class AppState {
     AppSort? sort,
     bool? isSearching,
     String? searchQuery,
-    bool? isSaving,
-    bool? hasUnsavedChanges,
   }) {
     return AppState(
       filter: filter ?? this.filter,
       sort: sort ?? this.sort,
       isSearching: isSearching ?? this.isSearching,
       searchQuery: searchQuery ?? this.searchQuery,
-      isSaving: isSaving ?? this.isSaving,
-      hasUnsavedChanges: hasUnsavedChanges ?? this.hasUnsavedChanges,
     );
   }
 }
@@ -446,19 +332,6 @@ class AppStateNotifier extends StateNotifier<AppState> {
   void clearSearch() {
     state = state.copyWith(isSearching: false, searchQuery: '');
   }
-
-  // Added missing methods for compatibility
-  void markUnsaved() {
-    state = state.copyWith(hasUnsavedChanges: true);
-  }
-
-  void markSaved() {
-    state = state.copyWith(hasUnsavedChanges: false, isSaving: false);
-  }
-
-  void markSaving() {
-    state = state.copyWith(isSaving: true);
-  }
 }
 
 final appStateProvider =
@@ -466,32 +339,6 @@ final appStateProvider =
   return AppStateNotifier();
 });
 
-// Theme mode provider with persistence
-class ThemeNotifier extends StateNotifier<bool> {
-  static const String _themeKey = 'isDarkMode';
-
-  ThemeNotifier() : super(false) {
-    _loadTheme();
-  }
-
-  Future<void> _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isDark = prefs.getBool(_themeKey) ?? false;
-    state = isDark;
-  }
-
-  Future<void> toggleTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = !state;
-    await prefs.setBool(_themeKey, state);
-  }
-
-  Future<void> setTheme(bool isDark) async {
-    final prefs = await SharedPreferences.getInstance();
-    state = isDark;
-    await prefs.setBool(_themeKey, isDark);
-  }
-}
-
+// Theme mode provider
 final themeModeProvider =
-    StateNotifierProvider<ThemeNotifier, bool>((ref) => ThemeNotifier());
+    StateProvider<bool>((ref) => false); // false = light, true = dark

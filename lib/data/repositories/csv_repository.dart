@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:csv/csv.dart';
-// import 'package:file_picker/file_picker.dart'; // Disabled for APK build
-// import 'package:share_plus/share_plus.dart';   // Disabled for APK build
+import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -53,40 +53,87 @@ class CsvRepository {
       final filename =
           '${AppConstants.csvPrefix}$timestamp${AppConstants.csvExtension}';
 
-      // Get temporary directory and create file
-      final tempDir = await getTemporaryDirectory();
-      final file = File(path.join(tempDir.path, filename));
-      await file.writeAsString(csvString);
-
-      // Share functionality disabled for APK build
       if (kIsWeb) {
-        // For web, could implement download functionality
-        throw UnimplementedError('File sharing not available in APK version');
+        // For web, we need to implement download functionality differently
+        // For now, throw an error indicating web is not supported
+        throw UnimplementedError('CSV export not yet implemented for web');
       } else {
-        // For APK, save to Downloads or show save location
-        throw UnimplementedError('File sharing not available in APK version');
+        // For mobile/desktop, save file and share it
+        final tempDir = await getTemporaryDirectory();
+        final file = File(path.join(tempDir.path, filename));
+        await file.writeAsString(csvString);
+
+        // Share the file
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          text: 'Grocery List Export - $filename',
+          subject: 'Grocery List CSV Export',
+        );
       }
     } catch (e) {
       throw Exception('Failed to export CSV: $e');
     }
   }
 
+  // Export sample template
+  Future<void> exportSampleTemplate() async {
+    try {
+      final csvData = _generateSampleTemplateData();
+      final csvString = const ListToCsvConverter().convert(csvData);
+
+      // Generate filename with timestamp
+      final timestamp = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+      final filename =
+          'grocery_sample_template_$timestamp${AppConstants.csvExtension}';
+
+      if (kIsWeb) {
+        // For web, we need to implement download functionality differently
+        // For now, throw an error indicating web is not supported
+        throw UnimplementedError(
+            'CSV sample template export not yet implemented for web');
+      } else {
+        // For mobile/desktop, save file and share it
+        final tempDir = await getTemporaryDirectory();
+        final file = File(path.join(tempDir.path, filename));
+        await file.writeAsString(csvString);
+
+        // Share the file
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          text: 'Grocery List Sample Template - $filename',
+          subject: 'Grocery List CSV Sample Template',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to export sample template: $e');
+    }
+  }
+
   // Import functionality
   Future<String?> pickCsvFile() async {
     try {
-      // File picker disabled for APK build
-      throw UnimplementedError('File picking not available in APK version');
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        return result.files.single.path!;
+      }
+
+      return null; // User cancelled the picker
     } catch (e) {
       throw Exception('Failed to pick CSV file: $e');
     }
   }
 
-  Future<CsvImportResult> parseCsvFile(String filePath) async {
+  Future<CsvImportResult> parseCsvFile(String filePath, int listId) async {
     try {
       final file = File(filePath);
       final contents = await file.readAsString();
 
-      return _parseCsvContent(contents);
+      return _parseCsvContent(contents, listId);
     } catch (e) {
       throw Exception('Failed to read CSV file: $e');
     }
@@ -129,7 +176,24 @@ class CsvRepository {
     return csvData;
   }
 
-  CsvImportResult _parseCsvContent(String csvContent) {
+  // Generate template CSV data with clear indication that Sl No is auto-generated
+  List<List<dynamic>> _generateSampleTemplateData() {
+    final csvData = <List<dynamic>>[];
+
+    // Add header row (keep full format for import compatibility)
+    csvData.add(_expectedHeaders);
+
+    // Add sample data rows with placeholder Sl No values
+    // The import logic ignores Sl No column anyway and auto-generates positions
+    csvData.add(['1', 'Apples', '2', 'kg', 'Y']);
+    csvData.add(['2', 'Milk', '1', 'liter', 'Y']);
+    csvData.add(['3', 'Bread', '', 'loaf', 'N']);
+    csvData.add(['4', 'Eggs', '12', 'pieces', 'Y']);
+
+    return csvData;
+  }
+
+  CsvImportResult _parseCsvContent(String csvContent, int listId) {
     final validItems = <GroceryItem>[];
     final errors = <CsvImportError>[];
 
@@ -173,7 +237,7 @@ class CsvRepository {
         final lineNumber = i + 1;
 
         try {
-          final item = _parseRowToItem(row, i + 1);
+          final item = _parseRowToItem(row, i + 1, listId);
           if (item != null) {
             validItems.add(item);
           }
@@ -218,7 +282,7 @@ class CsvRepository {
     return true;
   }
 
-  GroceryItem? _parseRowToItem(List<dynamic> row, int position) {
+  GroceryItem? _parseRowToItem(List<dynamic> row, int position, int listId) {
     if (row.length < 5) {
       throw Exception('Insufficient columns. Expected 5, got ${row.length}');
     }
@@ -274,6 +338,7 @@ class CsvRepository {
       qtyUnit: qtyUnit,
       needed: needed,
       position: position,
+      listId: listId, // Use the provided listId instead of hardcoded 1
     );
   }
 

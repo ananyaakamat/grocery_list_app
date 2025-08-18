@@ -12,6 +12,7 @@ class GroceryItem with _$GroceryItem {
     String? qtyUnit,
     @Default(false) bool needed,
     required int position,
+    required int listId, // Added for CR1 multi-list feature
     required DateTime createdAt,
     required DateTime updatedAt,
   }) = _GroceryItem;
@@ -26,6 +27,7 @@ class GroceryItem with _$GroceryItem {
     String? qtyUnit,
     bool needed = false,
     required int position,
+    required int listId, // Added for CR1 multi-list feature
   }) {
     final now = DateTime.now();
     return GroceryItem(
@@ -34,6 +36,7 @@ class GroceryItem with _$GroceryItem {
       qtyUnit: qtyUnit,
       needed: needed,
       position: position,
+      listId: listId,
       createdAt: now,
       updatedAt: now,
     );
@@ -50,6 +53,7 @@ extension GroceryItemExtensions on GroceryItem {
       'qty_unit': qtyUnit,
       'needed': needed ? 1 : 0,
       'position': position,
+      'list_id': listId, // Added for CR1 multi-list feature
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -64,6 +68,8 @@ extension GroceryItemExtensions on GroceryItem {
       qtyUnit: map['qty_unit'] as String?,
       needed: (map['needed'] as int) == 1,
       position: map['position'] as int,
+      listId: map['list_id'] as int? ??
+          1, // Default to 1 for backward compatibility
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );

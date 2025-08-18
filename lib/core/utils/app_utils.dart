@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 class AppUtils {
   // Date formatting utilities
   static String formatDateTime(DateTime dateTime) {
-    return DateFormat('MMM d, h:mm a').format(dateTime);
+    return DateFormat('d MMM yy, h:mm a').format(dateTime);
   }
 
   static String formatDateTimeForFilename(DateTime dateTime) {

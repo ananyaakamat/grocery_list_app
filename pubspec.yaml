@@ -1,5 +1,5 @@
 name: flutter_sqlite_grocery_list
-description: "A simple, beautiful, offline-first grocery list app for South Indian households"
+description: "Grocery List - A simple, beautiful, offline-first grocery list app"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -43,6 +43,9 @@ dependencies:
   file_picker: ^8.1.2
   csv: ^6.0.0
   share_plus: ^10.1.0
+
+  # Preferences
+  shared_preferences: ^2.3.2
 
   # Data Classes & JSON
   freezed_annotation: ^2.4.4

@@ -14,6 +14,7 @@ _$GroceryItemImpl _$$GroceryItemImplFromJson(Map<String, dynamic> json) =>
       qtyUnit: json['qtyUnit'] as String?,
       needed: json['needed'] as bool? ?? false,
       position: (json['position'] as num).toInt(),
+      listId: (json['listId'] as num).toInt(),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -26,6 +27,7 @@ Map<String, dynamic> _$$GroceryItemImplToJson(_$GroceryItemImpl instance) =>
       'qtyUnit': instance.qtyUnit,
       'needed': instance.needed,
       'position': instance.position,
+      'listId': instance.listId,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),
     };

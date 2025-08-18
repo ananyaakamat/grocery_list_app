@@ -26,6 +26,8 @@ mixin _$GroceryItem {
   String? get qtyUnit => throw _privateConstructorUsedError;
   bool get needed => throw _privateConstructorUsedError;
   int get position => throw _privateConstructorUsedError;
+  int get listId =>
+      throw _privateConstructorUsedError; // Added for CR1 multi-list feature
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime get updatedAt => throw _privateConstructorUsedError;
 
@@ -52,6 +54,7 @@ abstract class $GroceryItemCopyWith<$Res> {
       String? qtyUnit,
       bool needed,
       int position,
+      int listId,
       DateTime createdAt,
       DateTime updatedAt});
 }
@@ -77,6 +80,7 @@ class _$GroceryItemCopyWithImpl<$Res, $Val extends GroceryItem>
     Object? qtyUnit = freezed,
     Object? needed = null,
     Object? position = null,
+    Object? listId = null,
     Object? createdAt = null,
     Object? updatedAt = null,
   }) {
@@ -105,6 +109,10 @@ class _$GroceryItemCopyWithImpl<$Res, $Val extends GroceryItem>
           ? _value.position
           : position // ignore: cast_nullable_to_non_nullable
               as int,
+      listId: null == listId
+          ? _value.listId
+          : listId // ignore: cast_nullable_to_non_nullable
+              as int,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -132,6 +140,7 @@ abstract class _$$GroceryItemImplCopyWith<$Res>
       String? qtyUnit,
       bool needed,
       int position,
+      int listId,
       DateTime createdAt,
       DateTime updatedAt});
 }
@@ -155,6 +164,7 @@ class __$$GroceryItemImplCopyWithImpl<$Res>
     Object? qtyUnit = freezed,
     Object? needed = null,
     Object? position = null,
+    Object? listId = null,
     Object? createdAt = null,
     Object? updatedAt = null,
   }) {
@@ -183,6 +193,10 @@ class __$$GroceryItemImplCopyWithImpl<$Res>
           ? _value.position
           : position // ignore: cast_nullable_to_non_nullable
               as int,
+      listId: null == listId
+          ? _value.listId
+          : listId // ignore: cast_nullable_to_non_nullable
+              as int,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -205,6 +219,7 @@ class _$GroceryItemImpl implements _GroceryItem {
       this.qtyUnit,
       this.needed = false,
       required this.position,
+      required this.listId,
       required this.createdAt,
       required this.updatedAt});
 
@@ -225,13 +240,16 @@ class _$GroceryItemImpl implements _GroceryItem {
   @override
   final int position;
   @override
+  final int listId;
+// Added for CR1 multi-list feature
+  @override
   final DateTime createdAt;
   @override
   final DateTime updatedAt;
 
   @override
   String toString() {
-    return 'GroceryItem(id: $id, name: $name, qtyValue: $qtyValue, qtyUnit: $qtyUnit, needed: $needed, position: $position, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'GroceryItem(id: $id, name: $name, qtyValue: $qtyValue, qtyUnit: $qtyUnit, needed: $needed, position: $position, listId: $listId, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -247,6 +265,7 @@ class _$GroceryItemImpl implements _GroceryItem {
             (identical(other.needed, needed) || other.needed == needed) &&
             (identical(other.position, position) ||
                 other.position == position) &&
+            (identical(other.listId, listId) || other.listId == listId) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -256,7 +275,7 @@ class _$GroceryItemImpl implements _GroceryItem {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, name, qtyValue, qtyUnit,
-      needed, position, createdAt, updatedAt);
+      needed, position, listId, createdAt, updatedAt);
 
   /// Create a copy of GroceryItem
   /// with the given fields replaced by the non-null parameter values.
@@ -282,6 +301,7 @@ abstract class _GroceryItem implements GroceryItem {
       final String? qtyUnit,
       final bool needed,
       required final int position,
+      required final int listId,
       required final DateTime createdAt,
       required final DateTime updatedAt}) = _$GroceryItemImpl;
 
@@ -300,6 +320,8 @@ abstract class _GroceryItem implements GroceryItem {
   bool get needed;
   @override
   int get position;
+  @override
+  int get listId; // Added for CR1 multi-list feature
   @override
   DateTime get createdAt;
   @override

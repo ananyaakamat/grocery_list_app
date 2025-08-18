@@ -1,11 +1,11 @@
 {
-    "name": "flutter_sqlite_grocery_list",
-    "short_name": "flutter_sqlite_grocery_list",
+    "name": "Grocery List",
+    "short_name": "Grocery List",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "A simple, beautiful, offline-first grocery list app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

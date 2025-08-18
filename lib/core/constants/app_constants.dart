@@ -1,14 +1,15 @@
 class AppConstants {
-  static const String appName = 'My Grocery List';
+  static const String appName = 'Grocery List';
   static const String appDescription =
       'A simple, beautiful, offline-first grocery list app for South Indian households';
 
   // Database
   static const String databaseName = 'annadaata_grocery.db';
-  static const int databaseVersion = 1;
+  static const int databaseVersion = 2; // Updated for CR1 multi-list feature
 
   // Tables
   static const String itemsTable = 'items';
+  static const String groceryListsTable = 'grocery_lists';
   static const String appMetaTable = 'app_meta';
 
   // CSV

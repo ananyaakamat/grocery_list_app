@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.annadaata.grocery" "\0"
-            VALUE "FileDescription", "flutter_sqlite_grocery_list" "\0"
+            VALUE "FileDescription", "Grocery List" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "flutter_sqlite_grocery_list" "\0"
+            VALUE "InternalName", "Grocery List" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 com.annadaata.grocery. All rights reserved." "\0"
             VALUE "OriginalFilename", "flutter_sqlite_grocery_list.exe" "\0"
-            VALUE "ProductName", "flutter_sqlite_grocery_list" "\0"
+            VALUE "ProductName", "Grocery List" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

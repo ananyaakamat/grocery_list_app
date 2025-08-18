@@ -125,16 +125,16 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Item Name *',
           style: AppTextStyles.labelLarge,
         ),
         const SizedBox(height: 8),
         TextFormField(
           controller: _nameController,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             hintText: 'e.g., Idli Rice, Coconut Oil',
-            prefixIcon: const Icon(Icons.shopping_basket_outlined),
+            prefixIcon: Icon(Icons.shopping_basket_outlined),
           ),
           textCapitalization: TextCapitalization.words,
           validator: (value) {
@@ -156,7 +156,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Quantity',
           style: AppTextStyles.labelLarge,
         ),
@@ -168,7 +168,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
               child: TextFormField(
                 controller: _qtyValueController,
                 decoration: const InputDecoration(
-                  hintText: 'Amount',
+                  hintText: 'Qty',
                   prefixIcon: Icon(Icons.numbers),
                 ),
                 keyboardType:
@@ -258,7 +258,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
 
   Widget _buildNeededCheckbox() {
     return CheckboxListTile(
-      title: Text(
+      title: const Text(
         'Mark as needed',
         style: AppTextStyles.bodyLarge,
       ),
@@ -281,7 +281,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Quick Add',
           style: AppTextStyles.labelLarge,
         ),
@@ -316,6 +316,12 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
         Expanded(
           child: ElevatedButton(
             onPressed: _isLoading ? null : _saveItem,
+            style: ElevatedButton.styleFrom(
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outline,
+                width: 1,
+              ),
+            ),
             child: _isLoading
                 ? const SizedBox(
                     width: 20,
@@ -342,6 +348,32 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
 
     try {
       final name = _nameController.text.trim();
+      final currentListId = ref.read(itemsProvider.notifier).currentListId ?? 1;
+
+      // Check for duplicate names
+      final isDuplicate =
+          await ref.read(itemsRepositoryProvider).nameExistsInList(
+                name,
+                currentListId,
+                excludeId: _isEditing ? widget.itemToEdit!.id : null,
+              );
+
+      if (isDuplicate) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'An item with the name "$name" already exists in this list. Please choose a different name.',
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
       final qtyValue = _qtyValueController.text.isNotEmpty
           ? double.parse(_qtyValueController.text)
           : null;
@@ -349,7 +381,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
       if (_isEditing) {
         final updatedItem = widget.itemToEdit!
             .copyWith(
-              name: name,
+              name: name.trim(),
               qtyValue: qtyValue,
               qtyUnit: _selectedUnit,
               needed: _needed,
@@ -358,14 +390,16 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
 
         await ref.read(itemsProvider.notifier).updateItem(updatedItem);
       } else {
-        final position =
-            await ref.read(itemsProvider.notifier).getNextPosition();
+        final position = await ref
+            .read(itemsRepositoryProvider)
+            .getNextPositionForList(currentListId);
         final newItem = GroceryItem.create(
           name: name,
           qtyValue: qtyValue,
           qtyUnit: _selectedUnit,
           needed: _needed,
           position: position,
+          listId: currentListId,
         );
 
         await ref.read(itemsProvider.notifier).addItem(newItem);

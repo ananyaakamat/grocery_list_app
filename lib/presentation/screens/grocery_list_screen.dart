@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/grocery_item.dart';
+import '../../data/models/grocery_list.dart'; // Added for CR1
 import '../providers/app_providers.dart';
 import '../widgets/grocery_item_tile.dart';
 import '../widgets/add_item_modal.dart';
@@ -11,13 +11,24 @@ import '../widgets/import_csv_modal.dart';
 import '../widgets/help_screen.dart';
 
 class GroceryListScreen extends ConsumerStatefulWidget {
-  const GroceryListScreen({super.key});
+  final GroceryList groceryList; // Added for CR1 - list-scoped screen
+
+  const GroceryListScreen({super.key, required this.groceryList});
 
   @override
   ConsumerState<GroceryListScreen> createState() => _GroceryListScreenState();
 }
 
 class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load items for the specific list
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(itemsProvider.notifier).loadItemsForList(widget.groceryList.id!);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final itemsAsync = ref.watch(itemsProvider);
@@ -35,59 +46,116 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddItemModal(context),
         tooltip: 'Add Item',
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  AppBar _buildAppBar(BuildContext context) {
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
     final itemsAsync = ref.watch(itemsProvider);
-    // Remove unused variables
-    // final selectedCount = ref.read(itemsProvider.notifier).selectedCount;
-    // final allSelected = ref.read(itemsProvider.notifier).allSelected;
 
-    return AppBar(
-      title: const Text(AppConstants.appName),
-      actions: [
-        // Add Item
-        IconButton(
-          icon: const Icon(Icons.add_circle_outline),
-          tooltip: 'Add Item',
-          onPressed: () => _showAddItemModal(context),
+    return PreferredSize(
+      preferredSize:
+          const Size.fromHeight(120), // Increased height for two lines
+      child: AppBar(
+        automaticallyImplyLeading: false, // Disable automatic back button
+        toolbarHeight: 120,
+        flexibleSpace: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // First line: List name
+                Container(
+                  height: 56, // Standard app bar height for title
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    children: [
+                      // Back button (custom positioning in first row only)
+                      if (Navigator.of(context).canPop())
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      Expanded(
+                        child: Text(
+                          widget.groceryList.name,
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Second line: Action icons
+                SizedBox(
+                  height: 48, // Height for icon row
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // Add Item
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        tooltip: 'Add Item',
+                        onPressed: () => _showAddItemModal(context),
+                      ),
+                      // Import CSV
+                      IconButton(
+                        icon: const Icon(Icons.upload_file),
+                        tooltip: 'Import CSV',
+                        onPressed: () => _showImportModal(context),
+                      ),
+                      // Export CSV
+                      IconButton(
+                        icon: const Icon(Icons.download),
+                        tooltip: 'Export CSV',
+                        onPressed:
+                            itemsAsync.hasValue && itemsAsync.value!.isNotEmpty
+                                ? () => _exportToCsv(context)
+                                : null,
+                      ),
+                      // Delete All Items
+                      IconButton(
+                        icon: const Icon(Icons.delete_sweep),
+                        tooltip: 'Delete All Items',
+                        onPressed:
+                            itemsAsync.hasValue && itemsAsync.value!.isNotEmpty
+                                ? () => _deleteAllItems(context)
+                                : null,
+                      ),
+                      // Save
+                      IconButton(
+                        icon: const Icon(Icons.save),
+                        tooltip: 'Save',
+                        onPressed: () => _saveItems(context),
+                      ),
+                      // Help
+                      IconButton(
+                        icon: const Icon(Icons.help_outline),
+                        tooltip: 'Help',
+                        onPressed: () => _showHelpScreen(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        // Import CSV
-        IconButton(
-          icon: const Icon(Icons.upload_file),
-          tooltip: 'Import CSV',
-          onPressed: () => _showImportModal(context),
-        ),
-        // Export CSV
-        IconButton(
-          icon: const Icon(Icons.download),
-          tooltip: 'Export CSV',
-          onPressed: itemsAsync.hasValue && itemsAsync.value!.isNotEmpty
-              ? () => _exportToCsv(context)
-              : null,
-        ),
-        // Save
-        IconButton(
-          icon: const Icon(Icons.save),
-          tooltip: 'Save',
-          onPressed: () => _saveItems(context),
-        ),
-        // Help
-        IconButton(
-          icon: const Icon(Icons.help_outline),
-          tooltip: 'Help',
-          onPressed: () => _showHelpScreen(context),
-        ),
-        // Select All Checkbox
-        Checkbox(
-          value: false, // Simplified for now
-          tristate: true,
-          onChanged: (value) => _toggleSelectAll(),
-        ),
-      ],
+      ),
     );
   }
 
@@ -96,20 +164,50 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       return _buildEmptyState();
     }
 
+    final neededCount = ref.watch(neededCountProvider);
+    final allNeeded = ref.watch(allNeededProvider);
+
     return Column(
       children: [
         // Status bar with last saved time and item count
         _buildStatusBar(context, items.length),
-        // Items list
+        // Select All Checkbox (appears above first item)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Checkbox(
+                value: allNeeded,
+                tristate: true,
+                onChanged: (value) => _toggleAllNeeded(),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  neededCount == 0
+                      ? 'Mark items as needed'
+                      : neededCount == items.length
+                          ? 'All items marked as needed'
+                          : '$neededCount of ${items.length} items needed',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Items list with pull-to-refresh
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(8),
-            itemCount: items.length,
-            itemBuilder: (context, index) => GroceryItemTile(
-              item: items[index],
-              onToggleNeeded: (item) => _toggleItemNeeded(item.id!),
-              onEdit: (item) => _showEditItemModal(context, item),
-              onDelete: (item) => _deleteItem(context, item),
+          child: RefreshIndicator(
+            onRefresh: _refreshItems,
+            child: ListView.builder(
+              padding: const EdgeInsets.all(8),
+              itemCount: items.length,
+              itemBuilder: (context, index) => GroceryItemTile(
+                item: items[index],
+                onToggleNeeded: (item) => _toggleItemNeeded(item.id!),
+                onEdit: (item) => _showEditItemModal(context, item),
+                onDelete: (item) => _deleteItem(context, item),
+              ),
             ),
           ),
         ),
@@ -119,7 +217,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
   Widget _buildStatusBar(BuildContext context, int itemCount) {
     final lastSavedAsync = ref.watch(lastSavedProvider);
-    final selectedCount = ref.read(itemsProvider.notifier).selectedCount;
+    final neededCount = ref.watch(neededCountProvider);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -135,13 +233,13 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '$itemCount items ($selectedCount needed)',
+            '$itemCount items ($neededCount needed)',
             style: AppTextStyles.bodyMedium,
           ),
           lastSavedAsync.when(
             data: (lastSaved) => Text(
               lastSaved != null
-                  ? 'Last saved: ${DateFormat('MMM d, h:mm a').format(lastSaved)}'
+                  ? 'Last saved: ${DateFormat('d MMM yy, h:mm a').format(lastSaved)}'
                   : 'Not saved yet',
               style: AppTextStyles.labelMedium.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -233,8 +331,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   }
 
   // Action methods
-  void _toggleSelectAll() {
-    ref.read(itemsProvider.notifier).toggleSelectAll();
+  void _toggleAllNeeded() {
+    ref.read(itemsProvider.notifier).toggleAllNeeded();
     ref.read(appStateProvider.notifier).markUnsaved();
   }
 
@@ -261,10 +359,17 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     );
   }
 
+  // Refresh method for pull-to-refresh
+  Future<void> _refreshItems() async {
+    await ref
+        .read(itemsProvider.notifier)
+        .loadItemsForList(widget.groceryList.id!);
+  }
+
   void _showImportModal(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => const ImportCsvModal(),
+      builder: (context) => ImportCsvModal(listId: widget.groceryList.id!),
     );
   }
 
@@ -297,6 +402,40 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
               );
             },
             child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteAllItems(BuildContext context) {
+    final items = ref.read(itemsProvider).value ?? [];
+    if (items.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete All Items'),
+        content: Text(
+            'Are you sure you want to delete all ${items.length} items? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              ref.read(itemsProvider.notifier).deleteAllItems();
+              ref.read(appStateProvider.notifier).markUnsaved();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('All ${items.length} items deleted')),
+              );
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Delete All'),
           ),
         ],
       ),
@@ -337,7 +476,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Saved. Last saved: ${DateFormat('MMM d, h:mm a').format(DateTime.now())}',
+              'Saved. Last saved: ${DateFormat('d MMM yy, h:mm a').format(DateTime.now())}',
             ),
           ),
         );
