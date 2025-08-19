@@ -69,17 +69,12 @@ class GroceryItemTile extends StatelessWidget {
       return null;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        quantity,
-        style: AppTextStyles.labelMedium.copyWith(
-          color: Theme.of(context).colorScheme.onSecondaryContainer,
-        ),
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Text(
+      quantity,
+      style: AppTextStyles.labelMedium.copyWith(
+        color: isDarkMode ? Colors.white : Colors.black,
       ),
     );
   }

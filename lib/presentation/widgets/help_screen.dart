@@ -36,15 +36,19 @@ class HelpScreen extends StatelessWidget {
           ),
           _buildSection(
             'Search & Filter',
-            'Use the search box at the top to find items by name. Apply filters to show All items, only Needed items, or Not Needed items. The search and filter work together - you can search within filtered results for precise item location.',
+            'Use the search box at the top to find items by name. Apply filters to show All items, only Needed items, or Not Needed items. The search and filter work together - you can search within filtered results for precise item location. Clear your search and filters instantly using the X icon in the search field.',
+          ),
+          _buildSection(
+            'Enhanced UI Features',
+            'The app now features a cleaner, more intuitive interface. The X icon in the search field provides one-click clearing of both search text and filters. Visual drag handles make item reordering more obvious and user-friendly.',
           ),
           _buildSection(
             'Reordering Items',
-            'Long press and drag any item to reorder your list. This helps organize your grocery list by categories, store layout, or priority. The new order is automatically saved.',
+            'Long press and drag any item to reorder your list using the drag handle icon. This helps organize your grocery list by categories, store layout, or priority. The visual drag handles make it clear which items can be moved. The new order is automatically saved.',
           ),
           _buildSection(
             'Dark Mode & Themes',
-            'The app defaults to dark mode for better battery life and night viewing. The theme automatically adapts all colors, including visual boundaries and cards, for optimal contrast in both light and dark modes.',
+            'The app defaults to dark mode for better battery life and night viewing. The theme automatically adapts all colors, including visual boundaries and cards, for optimal contrast in both light and dark modes. Item quantities are displayed with clean white text in dark mode for better readability.',
           ),
           _buildSection(
             'Visual Organization',
@@ -193,8 +197,12 @@ class HelpScreen extends StatelessWidget {
               'A: Yes! Use the filter buttons to show only "Needed" items, then tap export. The CSV will contain only the filtered items. The export message will confirm which filter was applied.',
             ),
             _buildFaqItem(
+              'Q: How do I clear search and filters quickly?',
+              'A: Use the X icon that appears in the search field when you have text entered. This will clear both the search text and any applied filters in one click.',
+            ),
+            _buildFaqItem(
               'Q: How do I reorder my grocery list?',
-              'A: Long press any item and drag it to a new position. This is useful for organizing items by store sections or shopping priority. The new order is automatically saved.',
+              'A: Long press any item and drag it to a new position using the drag handle icon. This is useful for organizing items by store sections or shopping priority. The new order is automatically saved.',
             ),
             _buildFaqItem(
               'Q: How do I change between light and dark mode?',
