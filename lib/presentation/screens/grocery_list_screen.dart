@@ -20,6 +20,8 @@ class GroceryListScreen extends ConsumerStatefulWidget {
 }
 
 class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
+  final _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -27,41 +29,82 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(itemsProvider.notifier).loadItemsForList(widget.groceryList.id!);
     });
+
+    // Sync the text controller with the provider state
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentSearch = ref.read(searchQueryProvider);
+      _searchController.text = currentSearch;
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // Method to clear search and filter state
+  void _clearSearchAndFilter() {
+    _searchController.clear();
+    ref.read(searchQueryProvider.notifier).state = '';
+    ref.read(itemFilterProvider.notifier).state = ItemFilter.all;
   }
 
   @override
   Widget build(BuildContext context) {
-    final itemsAsync = ref.watch(itemsProvider);
+    final itemsAsync = ref.watch(filteredItemsProvider);
     // Remove unused variables that were causing warnings
     // final appState = ref.watch(appStateProvider);
     // final lastSavedAsync = ref.watch(lastSavedProvider);
 
-    return Scaffold(
-      appBar: _buildAppBar(context),
-      body: itemsAsync.when(
-        data: (items) => _buildItemsList(context, items),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => _buildErrorWidget(context, error),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddItemModal(context),
-        tooltip: 'Add Item',
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-            width: 1,
-          ),
+    return PopScope(
+      canPop: true,
+      onPopInvoked: (didPop) {
+        // Clear search and filter state when navigating back
+        if (didPop) {
+          // Post-frame callback to ensure it happens after navigation
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _clearSearchAndFilter();
+          });
+        }
+      },
+      child: Scaffold(
+        appBar: _buildAppBar(context),
+        body: Column(
+          children: [
+            // Search and Filter UI
+            _buildSearchAndFilterSection(context),
+            // Items content
+            Expanded(
+              child: itemsAsync.when(
+                data: (items) => _buildItemsList(context, items),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, stack) => _buildErrorWidget(context, error),
+              ),
+            ),
+          ],
         ),
-        child: const Icon(Icons.add),
-      ),
-    );
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => _showAddItemModal(context),
+          tooltip: 'Add Item',
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: const Icon(Icons.add),
+        ),
+      ), // Close Scaffold
+    ); // Close PopScope
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
-    final itemsAsync = ref.watch(itemsProvider);
+    final itemsAsync =
+        ref.watch(itemsProvider); // Keep using itemsProvider for button states
 
     return PreferredSize(
       preferredSize:
@@ -85,7 +128,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                       if (Navigator.of(context).canPop())
                         IconButton(
                           icon: const Icon(Icons.arrow_back),
-                          onPressed: () => Navigator.of(context).pop(),
+                          onPressed: () {
+                            _clearSearchAndFilter();
+                            Navigator.of(context).pop();
+                          },
                         ),
                       Expanded(
                         child: Text(
@@ -164,50 +210,106 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       return _buildEmptyState();
     }
 
-    final neededCount = ref.watch(neededCountProvider);
     final allNeeded = ref.watch(allNeededProvider);
 
     return Column(
       children: [
         // Status bar with last saved time and item count
         _buildStatusBar(context, items.length),
-        // Select All Checkbox (appears above first item)
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              Checkbox(
-                value: allNeeded,
-                tristate: true,
-                onChanged: (value) => _toggleAllNeeded(),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  neededCount == 0
-                      ? 'Mark items as needed'
-                      : neededCount == items.length
-                          ? 'All items marked as needed'
-                          : '$neededCount of ${items.length} items needed',
-                  style: Theme.of(context).textTheme.bodyMedium,
+        // Select All Checkbox (aligned with item checkboxes)
+        Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Theme.of(context)
+                  .colorScheme
+                  .primaryContainer
+                  .withOpacity(0.1),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Select All Items',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 16),
+                Transform.scale(
+                  scale: 1.2, // Match the scale from GroceryItemTile
+                  child: Checkbox(
+                    value: allNeeded,
+                    tristate: true,
+                    onChanged: (value) => _toggleAllNeeded(),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        // Items list with pull-to-refresh
+        // Items list with pull-to-refresh, visual boundaries, and reordering
         Expanded(
           child: RefreshIndicator(
             onRefresh: _refreshItems,
             child: ListView.builder(
               padding: const EdgeInsets.all(8),
               itemCount: items.length,
-              itemBuilder: (context, index) => GroceryItemTile(
-                item: items[index],
-                onToggleNeeded: (item) => _toggleItemNeeded(item.id!),
-                onEdit: (item) => _showEditItemModal(context, item),
-                onDelete: (item) => _deleteItem(context, item),
-              ),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                return Card(
+                  key: ValueKey(item.id),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  elevation: 3,
+                  shadowColor:
+                      Theme.of(context).colorScheme.shadow.withOpacity(0.3),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outline
+                          .withOpacity(0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Theme.of(context).colorScheme.surface,
+                          Theme.of(context)
+                              .colorScheme
+                              .surface
+                              .withOpacity(0.8),
+                        ],
+                      ),
+                    ),
+                    child: GroceryItemTile(
+                      item: item,
+                      onToggleNeeded: (item) => _toggleItemNeeded(item.id!),
+                      onEdit: (item) => _showEditItemModal(context, item),
+                      onDelete: (item) => _deleteItem(context, item),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -260,6 +362,157 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildSearchAndFilterSection(BuildContext context) {
+    final currentFilter = ref.watch(itemFilterProvider);
+    final searchQuery = ref.watch(searchQueryProvider);
+
+    return Container(
+      margin: const EdgeInsets.all(12),
+      child: Card(
+        elevation: 4,
+        shadowColor: Theme.of(context).colorScheme.shadow.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withOpacity(0.3),
+                Theme.of(context).colorScheme.surfaceContainer.withOpacity(0.1),
+              ],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // Search box
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search items...',
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    suffixIcon: searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: _clearSearchAndFilter,
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withOpacity(0.5),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor:
+                        Theme.of(context).colorScheme.surface.withOpacity(0.8),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                  ),
+                  onChanged: (value) {
+                    ref.read(searchQueryProvider.notifier).state = value;
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Filter buttons
+                Row(
+                  children: [
+                    Text(
+                      'Filter: ',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: ItemFilter.values.map((filter) {
+                            final isSelected = currentFilter == filter;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                label: Text(
+                                  _getFilterLabel(filter),
+                                  style: TextStyle(
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
+                                  ),
+                                ),
+                                selected: isSelected,
+                                onSelected: (_) {
+                                  ref.read(itemFilterProvider.notifier).state =
+                                      filter;
+                                },
+                                selectedColor: Theme.of(context)
+                                    .colorScheme
+                                    .primaryContainer,
+                                checkmarkColor: Theme.of(context)
+                                    .colorScheme
+                                    .onPrimaryContainer,
+                                elevation: isSelected ? 2 : 1,
+                                shadowColor: Theme.of(context)
+                                    .colorScheme
+                                    .shadow
+                                    .withOpacity(0.1),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getFilterLabel(ItemFilter filter) {
+    switch (filter) {
+      case ItemFilter.all:
+        return 'All';
+      case ItemFilter.needed:
+        return 'Needed';
+      case ItemFilter.notNeeded:
+        return 'Not Needed';
+    }
   }
 
   Widget _buildEmptyState() {
@@ -444,14 +697,19 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
   void _exportToCsv(BuildContext context) async {
     try {
-      final items = ref.read(itemsProvider).value ?? [];
+      // Use filtered items instead of all items
+      final items = ref.read(filteredItemsProvider).value ?? [];
       final csvRepository = ref.read(csvRepositoryProvider);
 
-      await csvRepository.exportToCsv(items);
+      // Pass the list name for custom filename format
+      await csvRepository.exportToCsv(items, listName: widget.groceryList.name);
 
       if (mounted) {
+        final filterName = ref.read(itemFilterProvider) != ItemFilter.all
+            ? ' (${_getFilterLabel(ref.read(itemFilterProvider))} filter applied)'
+            : '';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('CSV exported successfully')),
+          SnackBar(content: Text('CSV exported successfully$filterName')),
         );
       }
     } catch (e) {
@@ -466,6 +724,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   void _saveItems(BuildContext context) async {
     try {
       ref.read(appStateProvider.notifier).markSaving();
+      // Use the original items provider for saving all items, not filtered
       final items = ref.read(itemsProvider).value ?? [];
       await ref.read(itemsProvider.notifier).saveAllItems(items);
       ref.read(appStateProvider.notifier).markSaved();

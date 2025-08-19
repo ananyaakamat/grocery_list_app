@@ -1,12 +1,14 @@
 class GroceryList {
   final int? id;
   final String name;
+  final int position;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   const GroceryList({
     this.id,
     required this.name,
+    required this.position,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -14,10 +16,12 @@ class GroceryList {
   // Create a new grocery list
   factory GroceryList.create({
     required String name,
+    int position = 0,
   }) {
     final now = DateTime.now();
     return GroceryList(
       name: name.trim(),
+      position: position,
       createdAt: now,
       updatedAt: now,
     );
@@ -28,6 +32,7 @@ class GroceryList {
     return GroceryList(
       id: map['id'] as int?,
       name: map['name'] as String,
+      position: map['position'] as int? ?? 0,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );
@@ -38,6 +43,7 @@ class GroceryList {
     return {
       if (id != null) 'id': id,
       'name': name,
+      'position': position,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -47,12 +53,14 @@ class GroceryList {
   GroceryList copyWith({
     int? id,
     String? name,
+    int? position,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
     return GroceryList(
       id: id ?? this.id,
       name: name ?? this.name,
+      position: position ?? this.position,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -72,17 +80,18 @@ class GroceryList {
     return other is GroceryList &&
         other.id == id &&
         other.name == name &&
+        other.position == position &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt;
   }
 
   @override
   int get hashCode {
-    return Object.hash(id, name, createdAt, updatedAt);
+    return Object.hash(id, name, position, createdAt, updatedAt);
   }
 
   @override
   String toString() {
-    return 'GroceryList(id: $id, name: $name, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'GroceryList(id: $id, name: $name, position: $position, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }

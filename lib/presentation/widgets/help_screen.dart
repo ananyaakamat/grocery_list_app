@@ -32,7 +32,23 @@ class HelpScreen extends StatelessWidget {
           ),
           _buildSection(
             'Select All Feature',
-            'Use the checkbox in the app bar to select or deselect all items at once. The Select All option is positioned for easy access on mobile devices.',
+            'The "Select All" checkbox is positioned on the right side of the screen for easy thumb access. Use it to select or deselect all visible items at once. The checkbox shows the current selection state and count.',
+          ),
+          _buildSection(
+            'Search & Filter',
+            'Use the search box at the top to find items by name. Apply filters to show All items, only Needed items, or Not Needed items. The search and filter work together - you can search within filtered results for precise item location.',
+          ),
+          _buildSection(
+            'Reordering Items',
+            'Long press and drag any item to reorder your list. This helps organize your grocery list by categories, store layout, or priority. The new order is automatically saved.',
+          ),
+          _buildSection(
+            'Dark Mode & Themes',
+            'The app defaults to dark mode for better battery life and night viewing. The theme automatically adapts all colors, including visual boundaries and cards, for optimal contrast in both light and dark modes.',
+          ),
+          _buildSection(
+            'Visual Organization',
+            'Items are displayed with clear visual boundaries using cards and spacing. This helps distinguish between different items and makes the list easier to scan, especially with longer lists.',
           ),
           _buildSection(
             'CSV Import Options',
@@ -44,7 +60,7 @@ class HelpScreen extends StatelessWidget {
           ),
           _buildSection(
             'Exporting Your Data',
-            'Tap the export icon to save your list as a CSV file. This creates a backup you can share or reimport later. The export includes all your current items with proper formatting.',
+            'Tap the export icon to save your list as a CSV file. The export respects your current filter settings - if you have "Needed" items filtered, only those items will be exported. Use "All" filter to export the complete list. The export creates a backup you can share or reimport later.',
           ),
           _buildSection(
             'Auto-Save & Status',
@@ -167,6 +183,22 @@ class HelpScreen extends StatelessWidget {
             _buildFaqItem(
               'Q: Where is the Save button?',
               'A: The app auto-saves your changes. You can see the last saved time displayed at the bottom of each list screen.',
+            ),
+            _buildFaqItem(
+              'Q: How do I search for items?',
+              'A: Use the search box at the top of any list. Type part of an item name to filter results. Combine with filter buttons to search within specific item categories.',
+            ),
+            _buildFaqItem(
+              'Q: Can I export only needed items?',
+              'A: Yes! Use the filter buttons to show only "Needed" items, then tap export. The CSV will contain only the filtered items. The export message will confirm which filter was applied.',
+            ),
+            _buildFaqItem(
+              'Q: How do I reorder my grocery list?',
+              'A: Long press any item and drag it to a new position. This is useful for organizing items by store sections or shopping priority. The new order is automatically saved.',
+            ),
+            _buildFaqItem(
+              'Q: How do I change between light and dark mode?',
+              'A: The app defaults to dark mode for better battery life. Theme switching may be added in future updates based on user feedback.',
             ),
           ],
         ),

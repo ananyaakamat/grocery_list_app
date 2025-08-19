@@ -120,14 +120,18 @@ class _GroceryListsHomeScreenState extends ConsumerState<GroceryListsHomeScreen>
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: ListView.builder(
+              child: ReorderableListView.builder(
                 itemCount: lists.length,
+                onReorder: (oldIndex, newIndex) =>
+                    _reorderLists(oldIndex, newIndex),
                 itemBuilder: (context, index) {
                   final list = lists[index];
                   return AnimatedContainer(
+                    key: ValueKey(list.id),
                     duration: Duration(milliseconds: 200 + (index * 50)),
                     curve: Curves.easeOutCubic,
-                    margin: const EdgeInsets.only(bottom: 12),
+                    margin:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                     child: _buildListCard(context, list, index),
                   );
                 },
@@ -145,97 +149,137 @@ class _GroceryListsHomeScreenState extends ConsumerState<GroceryListsHomeScreen>
         ref.watch(groceryListsProvider.notifier).getItemCount(list.id!);
 
     return Card(
-      elevation: 2,
-      shadowColor: colorScheme.shadow.withOpacity(0.1),
-      child: InkWell(
-        onTap: () => _navigateToListItems(context, list),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              // List Icon
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: _getListColor(index, colorScheme).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
+      elevation: 4,
+      shadowColor: colorScheme.shadow.withOpacity(0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: colorScheme.outline.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface.withOpacity(0.8),
+            ],
+          ),
+        ),
+        child: InkWell(
+          onTap: () => _navigateToListItems(context, list),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Row(
+              children: [
+                // Drag Handle Icon
+                Tooltip(
+                  message: 'Hold and drag to reorder lists',
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color:
+                          colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.drag_handle,
+                      color: colorScheme.onSurfaceVariant.withOpacity(0.8),
+                      size: 18,
+                    ),
+                  ),
                 ),
-                child: Icon(
-                  Icons.shopping_cart_outlined,
-                  color: _getListColor(index, colorScheme),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
+                const SizedBox(width: 12),
 
-              // List Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // List Icon
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: _getListColor(index, colorScheme).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.shopping_cart_outlined,
+                    color: _getListColor(index, colorScheme),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+
+                // List Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        list.name,
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: colorScheme.onSurface,
+                                ),
+                      ),
+                      const SizedBox(height: 4),
+                      FutureBuilder<int>(
+                        future: itemCountFuture,
+                        builder: (context, snapshot) {
+                          final count = snapshot.data ?? 0;
+                          return Text(
+                            count == 0
+                                ? 'No items yet'
+                                : '$count item${count == 1 ? '' : 's'}',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Updated ${_formatDate(list.updatedAt)}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color:
+                                  colorScheme.onSurfaceVariant.withOpacity(0.7),
+                              fontSize: 11,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Action Buttons
+                Column(
                   children: [
-                    Text(
-                      list.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.onSurface,
-                          ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.edit_outlined,
+                        color: colorScheme.primary,
+                        size: 20,
+                      ),
+                      tooltip: 'Edit List',
+                      onPressed: () => _showEditListModal(context, list),
                     ),
-                    const SizedBox(height: 4),
-                    FutureBuilder<int>(
-                      future: itemCountFuture,
-                      builder: (context, snapshot) {
-                        final count = snapshot.data ?? 0;
-                        return Text(
-                          count == 0
-                              ? 'No items yet'
-                              : '$count item${count == 1 ? '' : 's'}',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Updated ${_formatDate(list.updatedAt)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                colorScheme.onSurfaceVariant.withOpacity(0.7),
-                            fontSize: 11,
-                          ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: colorScheme.error,
+                        size: 20,
+                      ),
+                      tooltip: 'Delete List',
+                      onPressed: () => _showDeleteConfirmation(context, list),
                     ),
                   ],
                 ),
-              ),
-
-              // Action Buttons
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.edit_outlined,
-                      color: colorScheme.primary,
-                      size: 20,
-                    ),
-                    tooltip: 'Edit List',
-                    onPressed: () => _showEditListModal(context, list),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.delete_outline,
-                      color: colorScheme.error,
-                      size: 20,
-                    ),
-                    tooltip: 'Delete List',
-                    onPressed: () => _showDeleteConfirmation(context, list),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -358,6 +402,36 @@ class _GroceryListsHomeScreenState extends ConsumerState<GroceryListsHomeScreen>
     // Refresh the home screen data when returning
     if (mounted) {
       ref.read(groceryListsProvider.notifier).loadLists();
+    }
+  }
+
+  void _reorderLists(int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+
+    final currentLists = ref.read(groceryListsProvider).value ?? [];
+    if (oldIndex >= 0 &&
+        oldIndex < currentLists.length &&
+        newIndex >= 0 &&
+        newIndex < currentLists.length) {
+      // Create a mutable copy of the lists
+      final reorderedLists = List<GroceryList>.from(currentLists);
+
+      // Reorder the lists
+      final movedList = reorderedLists.removeAt(oldIndex);
+      reorderedLists.insert(newIndex, movedList);
+
+      // Update the provider with the reordered lists
+      ref.read(groceryListsProvider.notifier).reorderLists(reorderedLists);
+
+      // Show feedback to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${movedList.name} moved successfully'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 

@@ -43,15 +43,26 @@ class CsvRepository {
   static const List<String> _expectedHeaders = AppConstants.csvHeaders;
 
   // Export functionality
-  Future<void> exportToCsv(List<GroceryItem> items) async {
+  Future<void> exportToCsv(List<GroceryItem> items, {String? listName}) async {
     try {
       final csvData = _generateCsvData(items);
       final csvString = const ListToCsvConverter().convert(csvData);
 
-      // Generate filename with timestamp
-      final timestamp = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+      // Generate filename with custom format: ListName_Date_Time.csv
+      final now = DateTime.now();
+      final dateStr = DateFormat('dMMMy').format(now); // 19Aug25
+      final timeStr = DateFormat('h_mmaa')
+          .format(now)
+          .toUpperCase(); // 2_05AM (uppercase AM/PM)
+
+      // Clean list name for filename (remove special characters)
+      final cleanListName = (listName ?? 'Grocery List')
+          .replaceAll(RegExp(r'[^\w\s-]'), '')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+
       final filename =
-          '${AppConstants.csvPrefix}$timestamp${AppConstants.csvExtension}';
+          '${cleanListName}_${dateStr}_$timeStr${AppConstants.csvExtension}';
 
       if (kIsWeb) {
         // For web, we need to implement download functionality differently

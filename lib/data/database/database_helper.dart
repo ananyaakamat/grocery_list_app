@@ -11,7 +11,7 @@ class DatabaseHelper {
   static Database? _database;
 
   // Web fallback storage
-  static List<GroceryItem> _webItems = [];
+  static final List<GroceryItem> _webItems = [];
   static DateTime? _webLastSaved;
 
   DatabaseHelper._internal();
@@ -85,6 +85,12 @@ class DatabaseHelper {
       ON ${AppConstants.itemsTable}(list_id)
     ''');
 
+    // Create index for grocery_lists position
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_grocery_lists_position 
+      ON ${AppConstants.groceryListsTable}(position)
+    ''');
+
     // Create app_meta table
     await db.execute('''
       CREATE TABLE IF NOT EXISTS ${AppConstants.appMetaTable} (
@@ -96,6 +102,7 @@ class DatabaseHelper {
     // Insert default grocery list for new installations
     await db.insert(AppConstants.groceryListsTable, {
       'name': 'My List',
+      'position': 0,
       'created_at': DateTime.now().toIso8601String(),
       'updated_at': DateTime.now().toIso8601String(),
     });
@@ -106,23 +113,27 @@ class DatabaseHelper {
       // Migration from version 1 to 2: Add multi-list support
       await _migrateToV2(db);
     }
+    if (oldVersion < 3) {
+      // Migration from version 2 to 3: Add list reordering support
+      await _migrateToV3(db);
+    }
   }
 
   Future<void> _migrateToV2(Database db) async {
     try {
       // Create grocery_lists table
       await db.execute('''
-        CREATE TABLE IF NOT EXISTS ${AppConstants.groceryListsTable} (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL UNIQUE,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )
-      ''');
-
-      // Insert default list "My List" for existing users
+      CREATE TABLE IF NOT EXISTS ${AppConstants.groceryListsTable} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    '''); // Insert default list "My List" for existing users
       await db.insert(AppConstants.groceryListsTable, {
         'name': 'My List',
+        'position': 0,
         'created_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       });
@@ -152,6 +163,42 @@ class DatabaseHelper {
       print('Successfully migrated database to version 2');
     } catch (e) {
       print('Error during migration to V2: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _migrateToV3(Database db) async {
+    try {
+      // Add position column to grocery_lists table
+      await db.execute('''
+        ALTER TABLE ${AppConstants.groceryListsTable} 
+        ADD COLUMN position INTEGER NOT NULL DEFAULT 0
+      ''');
+
+      // Set initial positions based on creation order (id)
+      final lists = await db.query(
+        AppConstants.groceryListsTable,
+        orderBy: 'id ASC',
+      );
+
+      for (int i = 0; i < lists.length; i++) {
+        await db.update(
+          AppConstants.groceryListsTable,
+          {'position': i},
+          where: 'id = ?',
+          whereArgs: [lists[i]['id']],
+        );
+      }
+
+      // Create index for position
+      await db.execute('''
+        CREATE INDEX IF NOT EXISTS idx_grocery_lists_position 
+        ON ${AppConstants.groceryListsTable}(position)
+      ''');
+
+      print('Successfully migrated database to version 3');
+    } catch (e) {
+      print('Error during migration to V3: $e');
       rethrow;
     }
   }
@@ -233,6 +280,19 @@ class DatabaseHelper {
     return null;
   }
 
+  // Helper method to update list's updated_at timestamp
+  Future<void> _updateListTimestamp(int listId) async {
+    if (kIsWeb) return; // Not applicable for web
+
+    final db = await database;
+    await db.update(
+      AppConstants.groceryListsTable,
+      {'updated_at': DateTime.now().toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [listId],
+    );
+  }
+
   Future<int> insertItem(GroceryItem item) async {
     if (kIsWeb) {
       // For web, add to in-memory list and return a fake ID
@@ -242,11 +302,16 @@ class DatabaseHelper {
     }
 
     final db = await database;
-    return await db.insert(
+    final result = await db.insert(
       AppConstants.itemsTable,
       item.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+
+    // Update the list's updated_at timestamp
+    await _updateListTimestamp(item.listId);
+
+    return result;
   }
 
   Future<void> updateItem(GroceryItem item) async {
@@ -266,6 +331,9 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [item.id],
     );
+
+    // Update the list's updated_at timestamp
+    await _updateListTimestamp(item.listId);
   }
 
   Future<void> deleteItem(int id) async {
@@ -276,11 +344,28 @@ class DatabaseHelper {
     }
 
     final db = await database;
+
+    // Get the listId before deleting
+    final result = await db.query(
+      AppConstants.itemsTable,
+      columns: ['list_id'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+
+    final listId = result.isNotEmpty ? result.first['list_id'] as int : null;
+
     await db.delete(
       AppConstants.itemsTable,
       where: 'id = ?',
       whereArgs: [id],
     );
+
+    // Update the list timestamp if we found the listId
+    if (listId != null) {
+      await _updateListTimestamp(listId);
+    }
   }
 
   Future<void> deleteItemsByIds(List<int> ids) async {
@@ -293,12 +378,28 @@ class DatabaseHelper {
     }
 
     final db = await database;
+
+    // Get all affected listIds before deleting
     final placeholders = ids.map((_) => '?').join(',');
+    final result = await db.query(
+      AppConstants.itemsTable,
+      columns: ['DISTINCT list_id'],
+      where: 'id IN ($placeholders)',
+      whereArgs: ids,
+    );
+
+    final affectedListIds = result.map((row) => row['list_id'] as int).toList();
+
     await db.delete(
       AppConstants.itemsTable,
       where: 'id IN ($placeholders)',
       whereArgs: ids,
     );
+
+    // Update timestamps for all affected lists
+    for (final listId in affectedListIds) {
+      await _updateListTimestamp(listId);
+    }
   }
 
   // Bulk operations for import/export and save functionality
@@ -473,6 +574,7 @@ class DatabaseHelper {
         GroceryList(
           id: 1,
           name: 'My List',
+          position: 0,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
@@ -482,7 +584,7 @@ class DatabaseHelper {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
       AppConstants.groceryListsTable,
-      orderBy: 'created_at ASC',
+      orderBy: 'position ASC, created_at ASC',
     );
 
     return List.generate(maps.length, (i) {
@@ -498,6 +600,7 @@ class DatabaseHelper {
         return GroceryList(
           id: 1,
           name: 'My List',
+          position: 0,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );
@@ -527,9 +630,18 @@ class DatabaseHelper {
     }
 
     final db = await database;
+
+    // Get the maximum position and add 1 for new list
+    final maxPositionResult = await db.rawQuery(
+        'SELECT MAX(position) as max_pos FROM ${AppConstants.groceryListsTable}');
+    final maxPosition = maxPositionResult.first['max_pos'] as int? ?? -1;
+
+    // Create the list with the new position
+    final listWithPosition = groceryList.copyWith(position: maxPosition + 1);
+
     return await db.insert(
       AppConstants.groceryListsTable,
-      groceryList.toMap(),
+      listWithPosition.toMap(),
       conflictAlgorithm: ConflictAlgorithm.abort, // Enforce unique names
     );
   }
@@ -597,6 +709,27 @@ class DatabaseHelper {
     );
 
     return maps.isNotEmpty;
+  }
+
+  // Reorder grocery lists
+  Future<void> reorderGroceryLists(List<GroceryList> reorderedLists) async {
+    if (kIsWeb) {
+      // For web, no-op (only one list)
+      return;
+    }
+
+    final db = await database;
+    await db.transaction((txn) async {
+      for (int i = 0; i < reorderedLists.length; i++) {
+        final list = reorderedLists[i];
+        await txn.update(
+          AppConstants.groceryListsTable,
+          {'position': i, 'updated_at': DateTime.now().toIso8601String()},
+          where: 'id = ?',
+          whereArgs: [list.id],
+        );
+      }
+    });
   }
 
   // Check if item name exists in a specific list (for validation)

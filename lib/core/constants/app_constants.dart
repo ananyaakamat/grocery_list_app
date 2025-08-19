@@ -5,7 +5,7 @@ class AppConstants {
 
   // Database
   static const String databaseName = 'annadaata_grocery.db';
-  static const int databaseVersion = 2; // Updated for CR1 multi-list feature
+  static const int databaseVersion = 3; // Updated for list reordering support
 
   // Tables
   static const String itemsTable = 'items';
