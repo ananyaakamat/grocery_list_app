@@ -297,7 +297,12 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
             ),
             child: Row(
               children: [
-                // Bulk Delete Icon
+                const Spacer(), // Push icons to align with item actions area
+
+                // Additional spacing to fine-tune alignment slightly more to the right
+                const SizedBox(width: 8),
+
+                // Bulk Delete Icon - always use delete icon, aligned above selection checkboxes
                 IconButton(
                   icon: Icon(
                     Icons.delete_outline,
@@ -308,23 +313,15 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                             .onSurfaceVariant
                             .withOpacity(0.5),
                   ),
-                  tooltip: 'Delete Selected Items',
+                  tooltip: _hasSelectedItems()
+                      ? 'Delete Selected Items'
+                      : 'Select All Items',
                   onPressed: _hasSelectedItems()
                       ? () => _bulkDeleteItems(context)
-                      : null,
+                      : () => _toggleSelectAll(),
                 ),
-                const Spacer(),
-                // Select All Delete Icon
-                IconButton(
-                  icon: Icon(
-                    Icons.select_all,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  tooltip: 'Select All Items',
-                  onPressed: () => _toggleSelectAll(),
-                ),
-                const SizedBox(width: 8),
-                // Toggle All Needed checkbox
+
+                // Toggle All Needed checkbox - aligned above individual needed checkboxes
                 Transform.scale(
                   scale: 1.2,
                   child: Checkbox(
@@ -334,6 +331,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
+                const SizedBox(
+                    width: 8), // Reduced padding to move icons slightly right
               ],
             ),
           ),
@@ -407,6 +406,15 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   Widget _buildStatusBar(BuildContext context, int itemCount) {
     final lastSavedAsync = ref.watch(lastSavedProvider);
     final neededCount = ref.watch(neededCountProvider);
+    final currentFilter = ref.watch(itemFilterProvider);
+
+    // Only show "(x needed)" when showing all items
+    String itemCountText;
+    if (currentFilter == ItemFilter.all) {
+      itemCountText = '$itemCount items ($neededCount needed)';
+    } else {
+      itemCountText = '$itemCount items';
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -422,7 +430,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '$itemCount items ($neededCount needed)',
+            itemCountText,
             style: AppTextStyles.bodyMedium,
           ),
           lastSavedAsync.when(

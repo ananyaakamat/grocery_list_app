@@ -31,20 +31,28 @@ class HelpScreen extends StatelessWidget {
             'Tap the edit icon on any item to modify it. Use the delete icon to remove items. Select multiple items using checkboxes for bulk operations. Use "Delete All" to clear the entire list with confirmation.',
           ),
           _buildSection(
-            'Smart Auto Serial Numbering & Timestamps',
-            'Items are automatically renumbered (1, 2, 3...) whenever you perform any action: updating items, deleting items, toggling the "Needed" checkbox, clicking Save, or importing data. This ensures your list maintains a consistent sequence. The "Last Saved" timestamp also updates automatically with any of these actions, helping you track when changes were made. Both features work together to keep your list organized and up-to-date.',
+            'Enhanced Performance & Reliability',
+            'The app now includes advanced database optimization with automatic constraint repair systems. If you encounter any "unique constraint failed" errors, the app automatically fixes position conflicts in the background. Database migrations ensure your data remains stable and consistent across app updates. The improved performance means faster loading and smoother operations, especially with larger grocery lists.',
+          ),
+          _buildSection(
+            'Comprehensive Timestamp Tracking',
+            'The "Last Saved" timestamp now updates consistently across ALL operations: adding items, editing items, deleting items (both individual and bulk), toggling needed checkboxes, clicking the Save button, and importing data. No more missed timestamps - every action that modifies your grocery list is properly tracked. The timestamp appears at the bottom of each list in an easy-to-read format like "18 Aug 25, 4:19 PM".',
           ),
           _buildSection(
             'Enhanced Bulk Delete Feature',
-            'Use the delete icon (trash can) next to the "Select All" checkbox to delete multiple items at once. First, uncheck the items you want to delete (items marked as "not needed"), then click the delete icon. The label will show "X out of Y selected" to indicate how many items are selected. A confirmation dialog will appear before deletion to prevent accidental removal. After deletion, item numbers will automatically renumber.',
+            'The bulk operations panel features a smart delete icon that changes based on your selection state. When no items are selected, click the icon to "Select All Items". Once items are selected, the same icon becomes red and allows you to "Delete Selected Items". The icon is perfectly aligned above the selection checkboxes for intuitive use. The needed checkbox remains available for toggling all items\' needed status.',
           ),
           _buildSection(
-            'Select All Feature',
-            'The "Select All" checkbox is positioned on the right side of the screen for easy thumb access. Use it to select or deselect all visible items at once. The checkbox shows the current selection state and count.',
+            'Smart Selection & Visual Feedback',
+            'Individual item selection checkboxes now update immediately when clicked - no need to navigate away and back to see the changes. The selection state is fully reactive, providing instant visual feedback. This improvement makes bulk operations smoother and more responsive.',
           ),
           _buildSection(
-            'Search & Filter',
-            'Use the search box at the top to find items by name. Apply filters to show All items, only Needed items, or Not Needed items. The search and filter work together - you can search within filtered results for precise item location. Clear your search and filters instantly using the X icon in the search field.',
+            'Smart Filter Display',
+            'The item count display is now context-aware based on your selected filter. When viewing "All Items", you\'ll see the full count with needed items breakdown (e.g., "5 items (3 needed)"). When you apply "Needed" or "Not Needed" filters, the display shows just the clean item count (e.g., "3 items") without confusing brackets. This makes the interface cleaner and more intuitive when filtering your grocery list.',
+          ),
+          _buildSection(
+            'Optimized User Experience',
+            'The "Needed" checkbox now operates smoothly without screen refreshes, matching the seamless experience of selection checkboxes. The bulk operations panel is perfectly aligned with individual item controls for better visual consistency. All interactions feel more responsive and polished.',
           ),
           _buildSection(
             'Improved User Interface',
@@ -61,6 +69,10 @@ class HelpScreen extends StatelessWidget {
           _buildSection(
             'Visual Organization',
             'Items are displayed with clear visual boundaries using cards and spacing. This helps distinguish between different items and makes the list easier to scan, especially with longer lists.',
+          ),
+          _buildSection(
+            'Advanced Database Features',
+            'The app includes sophisticated database management with automatic constraint repair, two-phase update systems for data consistency, and automatic migration handling. Position indices are maintained automatically, ensuring your grocery list always stays in the correct order even during complex operations. The database is optimized for performance and reliability.',
           ),
           _buildSection(
             'CSV Import Options',
