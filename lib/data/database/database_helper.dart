@@ -50,15 +50,15 @@ class DatabaseHelper {
 
   Future<void> _repairPositionConstraints(Database db) async {
     try {
-      print('Starting position constraint repair...');
+      debugPrint('Starting position constraint repair...');
 
       // Get all lists
       final lists = await db.query(AppConstants.groceryListsTable);
-      print('Found ${lists.length} lists to repair');
+      debugPrint('Found ${lists.length} lists to repair');
 
       for (final list in lists) {
         final listId = list['id'] as int;
-        print('Repairing list $listId...');
+        debugPrint('Repairing list $listId...');
 
         // Get all items for this list ordered by ID (as fallback order)
         final items = await db.query(
@@ -69,11 +69,11 @@ class DatabaseHelper {
         );
 
         if (items.isEmpty) {
-          print('List $listId has no items, skipping...');
+          debugPrint('List $listId has no items, skipping...');
           continue;
         }
 
-        print('List $listId has ${items.length} items');
+        debugPrint('List $listId has ${items.length} items');
 
         // Always reindex positions to ensure uniqueness
         await db.transaction((txn) async {
@@ -101,12 +101,13 @@ class DatabaseHelper {
           }
         });
 
-        print('Successfully repaired position constraints for list $listId');
+        debugPrint(
+            'Successfully repaired position constraints for list $listId');
       }
 
-      print('Position constraint repair completed successfully');
+      debugPrint('Position constraint repair completed successfully');
     } catch (e) {
-      print('Error repairing position constraints: $e');
+      debugPrint('Error repairing position constraints: $e');
       // Don't rethrow - we don't want app startup to fail
     }
   }
@@ -234,9 +235,9 @@ class DatabaseHelper {
         ON ${AppConstants.itemsTable}(list_id, position)
       ''');
 
-      print('Successfully migrated database to version 2');
+      debugPrint('Successfully migrated database to version 2');
     } catch (e) {
-      print('Error during migration to V2: $e');
+      debugPrint('Error during migration to V2: $e');
       rethrow;
     }
   }
@@ -270,16 +271,17 @@ class DatabaseHelper {
         ON ${AppConstants.groceryListsTable}(position)
       ''');
 
-      print('Successfully migrated database to version 3');
+      debugPrint('Successfully migrated database to version 3');
     } catch (e) {
-      print('Error during migration to V3: $e');
+      debugPrint('Error during migration to V3: $e');
       rethrow;
     }
   }
 
   Future<void> _migrateToV4(Database db) async {
     try {
-      print('Starting migration to V4: Fixing position constraint issues...');
+      debugPrint(
+          'Starting migration to V4: Fixing position constraint issues...');
 
       // Check if grocery_lists table already has position column
       final tables = await db
@@ -318,9 +320,9 @@ class DatabaseHelper {
       // Fix any existing position constraint violations in items table
       await _repairPositionConstraints(db);
 
-      print('Successfully migrated database to version 4');
+      debugPrint('Successfully migrated database to version 4');
     } catch (e) {
-      print('Error during migration to V4: $e');
+      debugPrint('Error during migration to V4: $e');
       rethrow;
     }
   }

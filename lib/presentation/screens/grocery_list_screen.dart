@@ -89,13 +89,16 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.of(context).pop();
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+
+              navigator.pop();
               await itemsNotifier.deleteSelected();
               ref.read(appStateProvider.notifier).markUnsaved();
               _updateSerialNumbers();
               _updateLastSaved();
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   SnackBar(
                       content: Text(
                           '$selectedCount item${selectedCount > 1 ? 's' : ''} deleted')),
@@ -118,7 +121,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
     return PopScope(
       canPop: true,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, result) {
         // Clear search and filter state when navigating back
         if (didPop) {
           // Post-frame callback to ensure it happens after navigation
@@ -822,6 +825,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   }
 
   void _exportToCsv(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+
     try {
       // Use filtered items instead of all items
       final items = ref.read(filteredItemsProvider).value ?? [];
@@ -834,13 +839,13 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         final filterName = ref.read(itemFilterProvider) != ItemFilter.all
             ? ' (${_getFilterLabel(ref.read(itemFilterProvider))} filter applied)'
             : '';
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('CSV exported successfully$filterName')),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('Export failed: $e')),
         );
       }
@@ -848,6 +853,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   }
 
   void _saveItems(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+
     try {
       ref.read(appStateProvider.notifier).markSaving();
       // Use the original items provider for saving all items, not filtered
@@ -861,7 +868,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       _updateLastSaved();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
               'Saved. Last saved: ${DateFormat('d MMM yy, h:mm a').format(DateTime.now())}',
@@ -872,7 +879,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     } catch (e) {
       ref.read(appStateProvider.notifier).markUnsaved();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('Save failed: $e')),
         );
       }
