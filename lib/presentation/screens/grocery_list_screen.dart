@@ -50,6 +50,65 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     ref.read(itemFilterProvider.notifier).state = ItemFilter.all;
   }
 
+  // Auto-renumber items
+  void _updateSerialNumbers() {
+    // Auto-renumbering will be handled by the backend when items are saved
+    // For now, we'll refresh the items to get updated positions
+    final listId = widget.groceryList.id!;
+    ref.read(itemsProvider.notifier).loadItemsForList(listId);
+  }
+
+  // Update last saved timestamp
+  void _updateLastSaved() {
+    ref.invalidate(lastSavedProvider);
+  }
+
+  // Helper method to check if any items are selected for bulk delete
+  bool _hasSelectedItems() {
+    final itemsNotifier = ref.read(itemsProvider.notifier);
+    return itemsNotifier.hasSelection;
+  }
+
+  // Bulk delete selected items with confirmation
+  void _bulkDeleteItems(BuildContext context) {
+    final itemsNotifier = ref.read(itemsProvider.notifier);
+    final selectedCount = itemsNotifier.selectedCount;
+
+    if (selectedCount == 0) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Selected Items'),
+        content: Text(
+            'Are you sure you want to delete $selectedCount selected item${selectedCount > 1 ? 's' : ''}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await itemsNotifier.deleteSelected();
+              ref.read(appStateProvider.notifier).markUnsaved();
+              _updateSerialNumbers();
+              _updateLastSaved();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text(
+                          '$selectedCount item${selectedCount > 1 ? 's' : ''} deleted')),
+                );
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final itemsAsync = ref.watch(filteredItemsProvider);
@@ -238,17 +297,36 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
             ),
             child: Row(
               children: [
-                Expanded(
-                  child: Text(
-                    'Select All Items',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                // Bulk Delete Icon
+                IconButton(
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: _hasSelectedItems()
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant
+                            .withOpacity(0.5),
                   ),
+                  tooltip: 'Delete Selected Items',
+                  onPressed: _hasSelectedItems()
+                      ? () => _bulkDeleteItems(context)
+                      : null,
                 ),
-                const SizedBox(width: 16),
+                const Spacer(),
+                // Select All Delete Icon
+                IconButton(
+                  icon: Icon(
+                    Icons.select_all,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  tooltip: 'Select All Items',
+                  onPressed: () => _toggleSelectAll(),
+                ),
+                const SizedBox(width: 8),
+                // Toggle All Needed checkbox
                 Transform.scale(
-                  scale: 1.2, // Match the scale from GroceryItemTile
+                  scale: 1.2,
                   child: Checkbox(
                     value: allNeeded,
                     tristate: true,
@@ -265,7 +343,13 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
           child: RefreshIndicator(
             onRefresh: _refreshItems,
             child: ListView.builder(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.only(
+                left: 8,
+                right: 8,
+                top: 8,
+                bottom:
+                    100, // Add bottom padding to prevent FAB from blocking last item
+              ),
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final item = items[index];
@@ -303,7 +387,10 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                     ),
                     child: GroceryItemTile(
                       item: item,
+                      isSelected: ref.watch(itemSelectionProvider(item.id!)),
                       onToggleNeeded: (item) => _toggleItemNeeded(item.id!),
+                      onToggleSelection: (item) =>
+                          _toggleItemSelection(item.id!),
                       onEdit: (item) => _showEditItemModal(context, item),
                       onDelete: (item) => _deleteItem(context, item),
                     ),
@@ -584,6 +671,15 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   }
 
   // Action methods
+  void _toggleSelectAll() {
+    final itemsNotifier = ref.read(itemsProvider.notifier);
+    if (itemsNotifier.allSelected) {
+      itemsNotifier.clearSelection();
+    } else {
+      itemsNotifier.selectAll();
+    }
+  }
+
   void _toggleAllNeeded() {
     ref.read(itemsProvider.notifier).toggleAllNeeded();
     ref.read(appStateProvider.notifier).markUnsaved();
@@ -592,6 +688,12 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   void _toggleItemNeeded(int itemId) {
     ref.read(itemsProvider.notifier).toggleItemNeeded(itemId);
     ref.read(appStateProvider.notifier).markUnsaved();
+    // Removed _updateSerialNumbers() and _updateLastSaved() to prevent unnecessary refreshes
+    // The provider already handles the state update and timestamp is updated automatically
+  }
+
+  void _toggleItemSelection(int itemId) {
+    ref.read(itemsProvider.notifier).toggleItemSelection(itemId);
   }
 
   void _showAddItemModal(BuildContext context) {
@@ -600,7 +702,11 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const AddItemModal(),
-    );
+    ).then((value) {
+      // Auto-renumber and update timestamp after adding item
+      _updateSerialNumbers();
+      _updateLastSaved();
+    });
   }
 
   void _showEditItemModal(BuildContext context, GroceryItem item) {
@@ -609,7 +715,11 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => AddItemModal(itemToEdit: item),
-    );
+    ).then((value) {
+      // Auto-renumber and update timestamp after editing item
+      _updateSerialNumbers();
+      _updateLastSaved();
+    });
   }
 
   // Refresh method for pull-to-refresh
@@ -623,7 +733,11 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     showDialog(
       context: context,
       builder: (context) => ImportCsvModal(listId: widget.groceryList.id!),
-    );
+    ).then((value) {
+      // Auto-renumber and update timestamp after importing
+      _updateSerialNumbers();
+      _updateLastSaved();
+    });
   }
 
   void _showHelpScreen(BuildContext context) {
@@ -650,6 +764,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
               Navigator.of(context).pop();
               ref.read(itemsProvider.notifier).deleteItem(item.id!);
               ref.read(appStateProvider.notifier).markUnsaved();
+              _updateSerialNumbers();
+              _updateLastSaved();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('${item.name} deleted')),
               );
@@ -681,6 +797,8 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
               Navigator.of(context).pop();
               ref.read(itemsProvider.notifier).deleteAllItems();
               ref.read(appStateProvider.notifier).markUnsaved();
+              _updateSerialNumbers();
+              _updateLastSaved();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('All ${items.length} items deleted')),
               );
@@ -728,8 +846,11 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       final items = ref.read(itemsProvider).value ?? [];
       await ref.read(itemsProvider.notifier).saveAllItems(items);
       ref.read(appStateProvider.notifier).markSaved();
-      // Refresh the last saved provider
+      // Auto-renumber items after saving
+      _updateSerialNumbers();
+      // Refresh the last saved provider and update timestamp
       ref.invalidate(lastSavedProvider);
+      _updateLastSaved();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

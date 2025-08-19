@@ -148,6 +148,8 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
       state = const AsyncValue.loading();
       final items = await _repository.fetchAll();
       state = AsyncValue.data(items);
+      // Sort and reindex items after loading
+      await _sortAndReindexAllItems();
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -160,6 +162,8 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
       state = const AsyncValue.loading();
       final items = await _repository.fetchByListId(listId);
       state = AsyncValue.data(items);
+      // Sort and reindex items after loading for specific list
+      await _sortAndReindexAllItems();
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -173,6 +177,8 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
       } else {
         await loadItems();
       }
+      // Sort and reindex all items after adding
+      await _sortAndReindexAllItems();
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -186,6 +192,8 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
       } else {
         await loadItems();
       }
+      // Sort and reindex all items after updating
+      await _sortAndReindexAllItems();
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -193,18 +201,18 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
 
   Future<void> deleteItem(int id) async {
     try {
+      // First delete from database
       await _repository.delete(id);
 
-      final currentItems = state.value ?? [];
-      final updatedItems = currentItems.where((item) => item.id != id).toList();
-      final reindexedItems = _reindexItems(updatedItems);
-      await _repository.reindexPositions(reindexedItems);
-
+      // Reload items and then sort and reindex
       if (_currentListId != null) {
         await loadItemsForList(_currentListId!);
       } else {
         await loadItems();
       }
+
+      // Sort and reindex all remaining items
+      await _sortAndReindexAllItems();
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -212,20 +220,18 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
 
   Future<void> deleteMultipleItems(List<int> ids) async {
     try {
+      // First delete from database
       await _repository.deleteMultiple(ids);
 
-      final currentItems = state.value ?? [];
-      final updatedItems =
-          currentItems.where((item) => !ids.contains(item.id)).toList();
-      final reindexedItems = _reindexItems(updatedItems);
-
-      await _repository.reindexPositions(reindexedItems);
-
+      // Reload items and then sort and reindex
       if (_currentListId != null) {
         await loadItemsForList(_currentListId!);
       } else {
         await loadItems();
       }
+
+      // Sort and reindex all remaining items
+      await _sortAndReindexAllItems();
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -261,6 +267,34 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
     }).toList();
   }
 
+  // Helper method to sort items alphabetically and update positions in database
+  Future<void> _sortAndReindexAllItems() async {
+    try {
+      final currentItems = state.value ?? [];
+      if (currentItems.isEmpty) return;
+
+      // Sort alphabetically
+      final sortedItems = List<GroceryItem>.from(currentItems);
+      sortedItems
+          .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+      // Reindex positions
+      final reindexedItems = sortedItems.asMap().entries.map((entry) {
+        final index = entry.key;
+        final item = entry.value;
+        return item.copyWith(position: index + 1);
+      }).toList();
+
+      // Update positions in database
+      await _repository.reindexPositions(reindexedItems);
+
+      // Update state with sorted and reindexed items
+      state = AsyncValue.data(reindexedItems);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
   // Get items statistics
   List<GroceryItem> get neededItems {
     final items = state.value ?? [];
@@ -290,22 +324,24 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
     } else {
       _selectedItemIds.add(itemId);
     }
-    // Trigger a state update to notify listeners
-    state = state;
+    // Trigger a state update to notify listeners by creating a new AsyncValue
+    final currentItems = state.value ?? [];
+    state = AsyncValue.data(currentItems);
   }
 
   void selectAll() {
     final items = state.value ?? [];
     _selectedItemIds.clear();
     _selectedItemIds.addAll(items.map((item) => item.id!));
-    // Trigger a state update
-    state = state;
+    // Trigger a state update by creating a new AsyncValue
+    state = AsyncValue.data(items);
   }
 
   void clearSelection() {
     _selectedItemIds.clear();
-    // Trigger a state update
-    state = state;
+    // Trigger a state update by creating a new AsyncValue
+    final currentItems = state.value ?? [];
+    state = AsyncValue.data(currentItems);
   }
 
   Future<void> deleteSelected() async {
@@ -366,6 +402,8 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
       } else {
         await loadItems();
       }
+      // Sort and reindex all items after saving
+      await _sortAndReindexAllItems();
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -409,10 +447,7 @@ final filteredItemsProvider = Provider<AsyncValue<List<GroceryItem>>>((ref) {
         }).toList();
       }
 
-      // Sort alphabetically
-      filteredItems
-          .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-
+      // Items are already sorted alphabetically in the database, so no need to sort here
       return AsyncValue.data(filteredItems);
     },
     loading: () => const AsyncValue.loading(),
@@ -455,6 +490,13 @@ final hasSelectionProvider = Provider<bool>((ref) {
   final itemsNotifier = ref.watch(itemsProvider.notifier);
   ref.watch(itemsProvider); // Watch for state changes
   return itemsNotifier.hasSelection;
+});
+
+// Item selection provider for individual items
+final itemSelectionProvider = Provider.family<bool, int>((ref, itemId) {
+  final itemsNotifier = ref.watch(itemsProvider.notifier);
+  ref.watch(itemsProvider); // Watch for state changes
+  return itemsNotifier.selectedItemIds.contains(itemId);
 });
 
 // Last saved provider

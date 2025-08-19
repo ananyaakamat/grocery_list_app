@@ -39,7 +39,76 @@ class DatabaseHelper {
       version: AppConstants.databaseVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      onOpen: _onOpen,
     );
+  }
+
+  Future<void> _onOpen(Database db) async {
+    // Fix any existing constraint violations after opening database
+    await _repairPositionConstraints(db);
+  }
+
+  Future<void> _repairPositionConstraints(Database db) async {
+    try {
+      print('Starting position constraint repair...');
+
+      // Get all lists
+      final lists = await db.query(AppConstants.groceryListsTable);
+      print('Found ${lists.length} lists to repair');
+
+      for (final list in lists) {
+        final listId = list['id'] as int;
+        print('Repairing list $listId...');
+
+        // Get all items for this list ordered by ID (as fallback order)
+        final items = await db.query(
+          AppConstants.itemsTable,
+          where: 'list_id = ?',
+          whereArgs: [listId],
+          orderBy: 'id ASC',
+        );
+
+        if (items.isEmpty) {
+          print('List $listId has no items, skipping...');
+          continue;
+        }
+
+        print('List $listId has ${items.length} items');
+
+        // Always reindex positions to ensure uniqueness
+        await db.transaction((txn) async {
+          // First set all to negative values to avoid conflicts
+          for (int i = 0; i < items.length; i++) {
+            final item = items[i];
+            await txn.update(
+              AppConstants.itemsTable,
+              {'position': -(i + 1)},
+              where: 'id = ?',
+              whereArgs: [item['id']],
+            );
+          }
+
+          // Then set to final positive values
+          for (int i = 0; i < items.length; i++) {
+            final item = items[i];
+            final newPosition = i + 1;
+            await txn.update(
+              AppConstants.itemsTable,
+              {'position': newPosition},
+              where: 'id = ?',
+              whereArgs: [item['id']],
+            );
+          }
+        });
+
+        print('Successfully repaired position constraints for list $listId');
+      }
+
+      print('Position constraint repair completed successfully');
+    } catch (e) {
+      print('Error repairing position constraints: $e');
+      // Don't rethrow - we don't want app startup to fail
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -48,6 +117,7 @@ class DatabaseHelper {
       CREATE TABLE IF NOT EXISTS ${AppConstants.groceryListsTable} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
+        position INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -116,6 +186,10 @@ class DatabaseHelper {
     if (oldVersion < 3) {
       // Migration from version 2 to 3: Add list reordering support
       await _migrateToV3(db);
+    }
+    if (oldVersion < 4) {
+      // Migration from version 3 to 4: Fix position constraint issues
+      await _migrateToV4(db);
     }
   }
 
@@ -199,6 +273,54 @@ class DatabaseHelper {
       print('Successfully migrated database to version 3');
     } catch (e) {
       print('Error during migration to V3: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _migrateToV4(Database db) async {
+    try {
+      print('Starting migration to V4: Fixing position constraint issues...');
+
+      // Check if grocery_lists table already has position column
+      final tables = await db
+          .rawQuery("PRAGMA table_info(${AppConstants.groceryListsTable})");
+      final hasPosition = tables.any((column) => column['name'] == 'position');
+
+      if (!hasPosition) {
+        // Add position column to grocery_lists table if it doesn't exist
+        await db.execute('''
+          ALTER TABLE ${AppConstants.groceryListsTable} 
+          ADD COLUMN position INTEGER NOT NULL DEFAULT 0
+        ''');
+
+        // Set initial positions based on creation order (id)
+        final lists = await db.query(
+          AppConstants.groceryListsTable,
+          orderBy: 'id ASC',
+        );
+
+        for (int i = 0; i < lists.length; i++) {
+          await db.update(
+            AppConstants.groceryListsTable,
+            {'position': i},
+            where: 'id = ?',
+            whereArgs: [lists[i]['id']],
+          );
+        }
+
+        // Create index for position
+        await db.execute('''
+          CREATE INDEX IF NOT EXISTS idx_grocery_lists_position 
+          ON ${AppConstants.groceryListsTable}(position)
+        ''');
+      }
+
+      // Fix any existing position constraint violations in items table
+      await _repairPositionConstraints(db);
+
+      print('Successfully migrated database to version 4');
+    } catch (e) {
+      print('Error during migration to V4: $e');
       rethrow;
     }
   }
@@ -298,6 +420,7 @@ class DatabaseHelper {
       // For web, add to in-memory list and return a fake ID
       final newItem = item.copyWith(id: DateTime.now().millisecondsSinceEpoch);
       _webItems.add(newItem);
+      _webLastSaved = DateTime.now();
       return newItem.id!;
     }
 
@@ -311,6 +434,9 @@ class DatabaseHelper {
     // Update the list's updated_at timestamp
     await _updateListTimestamp(item.listId);
 
+    // Update global last saved timestamp
+    await _updateLastSavedTimestamp();
+
     return result;
   }
 
@@ -321,6 +447,7 @@ class DatabaseHelper {
       if (index != -1) {
         _webItems[index] = item;
       }
+      _webLastSaved = DateTime.now();
       return;
     }
 
@@ -334,12 +461,16 @@ class DatabaseHelper {
 
     // Update the list's updated_at timestamp
     await _updateListTimestamp(item.listId);
+
+    // Update global last saved timestamp
+    await _updateLastSavedTimestamp();
   }
 
   Future<void> deleteItem(int id) async {
     if (kIsWeb) {
       // For web, remove from in-memory list
       _webItems.removeWhere((item) => item.id == id);
+      _webLastSaved = DateTime.now();
       return;
     }
 
@@ -366,6 +497,9 @@ class DatabaseHelper {
     if (listId != null) {
       await _updateListTimestamp(listId);
     }
+
+    // Update global last saved timestamp
+    await _updateLastSavedTimestamp();
   }
 
   Future<void> deleteItemsByIds(List<int> ids) async {
@@ -374,6 +508,7 @@ class DatabaseHelper {
     if (kIsWeb) {
       // For web, remove items from in-memory list
       _webItems.removeWhere((item) => ids.contains(item.id));
+      _webLastSaved = DateTime.now();
       return;
     }
 
@@ -400,6 +535,9 @@ class DatabaseHelper {
     for (final listId in affectedListIds) {
       await _updateListTimestamp(listId);
     }
+
+    // Update global last saved timestamp
+    await _updateLastSavedTimestamp();
   }
 
   // Bulk operations for import/export and save functionality
@@ -458,9 +596,33 @@ class DatabaseHelper {
 
   // Position management for reordering
   Future<void> reindexPositions(List<GroceryItem> items) async {
+    if (kIsWeb) {
+      // For web, update positions in memory
+      for (int i = 0; i < items.length; i++) {
+        final updatedItem = items[i].copyWith(position: i + 1);
+        final index = _webItems.indexWhere((item) => item.id == updatedItem.id);
+        if (index != -1) {
+          _webItems[index] = updatedItem;
+        }
+      }
+      _webLastSaved = DateTime.now();
+      return;
+    }
+
     final db = await database;
 
     await db.transaction((txn) async {
+      // Step 1: Set all items to temporary negative positions to avoid constraint conflicts
+      for (int i = 0; i < items.length; i++) {
+        await txn.update(
+          AppConstants.itemsTable,
+          {'position': -(i + 1)}, // Use negative positions temporarily
+          where: 'id = ?',
+          whereArgs: [items[i].id],
+        );
+      }
+
+      // Step 2: Update to final positive positions
       for (int i = 0; i < items.length; i++) {
         final updatedItem = items[i].copyWith(position: i + 1);
         await txn.update(
@@ -471,6 +633,9 @@ class DatabaseHelper {
         );
       }
     });
+
+    // Update global last saved timestamp after reindexing
+    await _updateLastSavedTimestamp();
   }
 
   // App Meta operations
@@ -521,6 +686,17 @@ class DatabaseHelper {
       }
     }
     return null;
+  }
+
+  // Helper method to update the global last saved timestamp
+  Future<void> _updateLastSavedTimestamp() async {
+    if (kIsWeb) {
+      _webLastSaved = DateTime.now();
+      return;
+    }
+
+    await setMetaValue(
+        AppConstants.lastSavedAtKey, DateTime.now().toIso8601String());
   }
 
   // Statistics and utility methods

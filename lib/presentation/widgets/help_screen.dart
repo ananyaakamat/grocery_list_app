@@ -24,11 +24,19 @@ class HelpScreen extends StatelessWidget {
           ),
           _buildSection(
             'Adding Items',
-            'Within any list, tap the + button to add items. Enter the item name and quantity (optional). Use "Y/N" to mark if the item is needed. The Quick Add section provides common item chips for faster entry. The app automatically trims extra spaces and prevents duplicate names.',
+            'Within any list, tap the + button to add items. Enter the item name and quantity (optional). Use "Y/N" to mark if the item is needed. The Quick Add section provides common item chips for faster entry. The app automatically trims extra spaces and prevents duplicate names. If you try to add a duplicate item, an error message will appear directly in the Add Item window with a red border around the text field.',
           ),
           _buildSection(
             'Editing & Deleting Items',
             'Tap the edit icon on any item to modify it. Use the delete icon to remove items. Select multiple items using checkboxes for bulk operations. Use "Delete All" to clear the entire list with confirmation.',
+          ),
+          _buildSection(
+            'Smart Auto Serial Numbering & Timestamps',
+            'Items are automatically renumbered (1, 2, 3...) whenever you perform any action: updating items, deleting items, toggling the "Needed" checkbox, clicking Save, or importing data. This ensures your list maintains a consistent sequence. The "Last Saved" timestamp also updates automatically with any of these actions, helping you track when changes were made. Both features work together to keep your list organized and up-to-date.',
+          ),
+          _buildSection(
+            'Enhanced Bulk Delete Feature',
+            'Use the delete icon (trash can) next to the "Select All" checkbox to delete multiple items at once. First, uncheck the items you want to delete (items marked as "not needed"), then click the delete icon. The label will show "X out of Y selected" to indicate how many items are selected. A confirmation dialog will appear before deletion to prevent accidental removal. After deletion, item numbers will automatically renumber.',
           ),
           _buildSection(
             'Select All Feature',
@@ -39,8 +47,8 @@ class HelpScreen extends StatelessWidget {
             'Use the search box at the top to find items by name. Apply filters to show All items, only Needed items, or Not Needed items. The search and filter work together - you can search within filtered results for precise item location. Clear your search and filters instantly using the X icon in the search field.',
           ),
           _buildSection(
-            'Enhanced UI Features',
-            'The app now features a cleaner, more intuitive interface. The X icon in the search field provides one-click clearing of both search text and filters. Visual drag handles make item reordering more obvious and user-friendly.',
+            'Improved User Interface',
+            'The Add Item floating action button now has proper spacing to prevent it from blocking the last item in your list. Extra scroll space is added at the bottom of the list for better visibility. Visual feedback includes colored icons that become active when items are selected for bulk operations. The delete icon shows in red when items are selected and becomes inactive (grayed out) when no items are selected.',
           ),
           _buildSection(
             'Reordering Items',
@@ -80,7 +88,7 @@ class HelpScreen extends StatelessWidget {
           ),
           _buildSection(
             'Bulk Operations',
-            'Use Select All to choose multiple items, then delete them together. The "Delete All" option clears the entire list with a confirmation dialog to prevent accidental deletion.',
+            'Use Select All to choose multiple items, then delete them together using the delete icon next to the checkbox. The "Delete All" option clears the entire list with a confirmation dialog to prevent accidental deletion. Both bulk operations automatically update serial numbers and timestamps.',
           ),
           _buildUnitsGuide(),
           _buildTroubleshooting(),
@@ -169,8 +177,20 @@ class HelpScreen extends StatelessWidget {
               'A: From the home screen, tap the + button to create a new list. Each list can have its own set of items and is saved separately.',
             ),
             _buildFaqItem(
-              'Q: Why can\'t I save duplicate names?',
-              'A: The app prevents duplicate list names and duplicate item names within the same list to avoid confusion.',
+              'Q: How do I delete multiple items at once?',
+              'A: First, uncheck the items you want to delete (mark as "not needed"). The delete icon next to "Select All" will show the count like "3 out of 8 selected". Click the delete icon to remove all selected items after confirming in the dialog.',
+            ),
+            _buildFaqItem(
+              'Q: Why do my item numbers keep changing?',
+              'A: Items are automatically renumbered to maintain a consistent sequence whenever you make changes (add, delete, edit, or toggle needed status). This ensures your list stays organized.',
+            ),
+            _buildFaqItem(
+              'Q: When does the "Last Saved" time update?',
+              'A: The timestamp updates automatically whenever you update an item, delete an item, toggle the "Needed" checkbox, click the Save button, or import data. This comprehensive tracking helps you know exactly when any changes were made to your list.',
+            ),
+            _buildFaqItem(
+              'Q: Why can\'t I add a duplicate item?',
+              'A: The app prevents duplicate item names within the same list to avoid confusion. When you try to add a duplicate, the text field will show a red border and display an error message directly in the Add Item window.',
             ),
             _buildFaqItem(
               'Q: CSV import failed?',

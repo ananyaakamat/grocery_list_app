@@ -23,6 +23,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
   String? _selectedUnit;
   bool _needed = false;
   bool _isLoading = false;
+  String? _duplicateError; // Add error state for duplicate validation
 
   bool get _isEditing => widget.itemToEdit != null;
 
@@ -132,12 +133,64 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _nameController,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: 'e.g., Idli Rice, Coconut Oil',
-            prefixIcon: Icon(Icons.shopping_basket_outlined),
+            prefixIcon: const Icon(Icons.shopping_basket_outlined),
+            // Add red border when duplicate error exists
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: _duplicateError != null
+                    ? Theme.of(context).colorScheme.error
+                    : Theme.of(context).colorScheme.outline,
+                width: _duplicateError != null ? 2 : 1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: _duplicateError != null
+                    ? Theme.of(context).colorScheme.error
+                    : Theme.of(context).colorScheme.outline,
+                width: _duplicateError != null ? 2 : 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: _duplicateError != null
+                    ? Theme.of(context).colorScheme.error
+                    : Theme.of(context).colorScheme.primary,
+                width: 2,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.error,
+                width: 2,
+              ),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.error,
+                width: 2,
+              ),
+            ),
+            // Show error text in decoration
+            errorText: _duplicateError,
+            errorStyle: TextStyle(
+              color: Theme.of(context).colorScheme.error,
+              fontSize: 12,
+            ),
           ),
           textCapitalization: TextCapitalization.words,
           validator: (value) {
+            // Return null if there's a duplicate error (it's shown via errorText)
+            if (_duplicateError != null) {
+              return null; // The duplicate error is shown via errorText
+            }
             if (value == null || value.trim().isEmpty) {
               return 'Please enter an item name';
             }
@@ -146,7 +199,9 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
             }
             return null;
           },
-          onChanged: (value) => setState(() {}),
+          onChanged: (value) => setState(() {
+            _duplicateError = null; // Clear error when user types
+          }),
         ),
       ],
     );
@@ -359,18 +414,11 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
               );
 
       if (isDuplicate) {
-        setState(() => _isLoading = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'An item with the name "$name" already exists in this list. Please choose a different name.',
-              ),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+        setState(() {
+          _isLoading = false;
+          _duplicateError =
+              'An item with this name already exists in this list';
+        });
         return;
       }
 
@@ -409,6 +457,9 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
 
       if (mounted) {
         Navigator.of(context).pop();
+
+        // Trigger auto-renumbering and timestamp update
+        // This will be handled by the parent screen's callback
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

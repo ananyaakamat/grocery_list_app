@@ -121,6 +121,8 @@ class _GroceryListsHomeScreenState extends ConsumerState<GroceryListsHomeScreen>
             const SizedBox(height: 16),
             Expanded(
               child: ReorderableListView.builder(
+                padding: const EdgeInsets.only(
+                    bottom: 80), // Add bottom padding for FAB
                 itemCount: lists.length,
                 onReorder: (oldIndex, newIndex) =>
                     _reorderLists(oldIndex, newIndex),

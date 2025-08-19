@@ -7,6 +7,8 @@ class GroceryItemTile extends StatelessWidget {
   final Function(GroceryItem) onToggleNeeded;
   final Function(GroceryItem) onEdit;
   final Function(GroceryItem) onDelete;
+  final Function(GroceryItem)? onToggleSelection;
+  final bool isSelected;
 
   const GroceryItemTile({
     super.key,
@@ -14,6 +16,8 @@ class GroceryItemTile extends StatelessWidget {
     required this.onToggleNeeded,
     required this.onEdit,
     required this.onDelete,
+    this.onToggleSelection,
+    this.isSelected = false,
   });
 
   @override
@@ -104,6 +108,16 @@ class GroceryItemTile extends StatelessWidget {
           onPressed: () => onDelete(item),
           tooltip: 'Delete',
         ),
+        // Selection checkbox (for bulk operations)
+        if (onToggleSelection != null)
+          Transform.scale(
+            scale: 1.2,
+            child: Checkbox(
+              value: isSelected,
+              onChanged: (value) => onToggleSelection!(item),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
         // Needed checkbox
         Transform.scale(
           scale: 1.2,

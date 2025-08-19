@@ -5,7 +5,8 @@ class AppConstants {
 
   // Database
   static const String databaseName = 'annadaata_grocery.db';
-  static const int databaseVersion = 3; // Updated for list reordering support
+  static const int databaseVersion =
+      4; // Updated to fix position constraint issues
 
   // Tables
   static const String itemsTable = 'items';
