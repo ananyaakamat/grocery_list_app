@@ -387,7 +387,7 @@ class _GroceryListsHomeScreenState extends ConsumerState<GroceryListsHomeScreen>
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat('d MMM yy, h:mm a').format(date);
+    return DateFormat('d/M/yy h:mm a').format(date);
   }
 
   void _navigateToListItems(BuildContext context, GroceryList list) async {

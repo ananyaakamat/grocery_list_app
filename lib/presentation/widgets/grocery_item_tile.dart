@@ -87,6 +87,8 @@ class GroceryItemTile extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Small spacer to shift icons right for timestamp alignment
+        const SizedBox(width: 4),
         // Edit button
         IconButton(
           icon: const Icon(Icons.edit_outlined),

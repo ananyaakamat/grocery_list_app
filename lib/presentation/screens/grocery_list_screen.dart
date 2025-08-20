@@ -278,65 +278,88 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       children: [
         // Status bar with last saved time and item count
         _buildStatusBar(context, items.length),
-        // Select All Checkbox (aligned with item checkboxes)
-        Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-              width: 1,
-            ),
-          ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
+        // Select All Checkbox (matching exact ListView structure for perfect width alignment)
+        Container(
+          padding: const EdgeInsets.only(left: 8, right: 8, top: 0, bottom: 0),
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            elevation: 3,
+            shadowColor: Theme.of(context).colorScheme.shadow.withOpacity(0.3),
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              color: Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withOpacity(0.1),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+                width: 1,
+              ),
             ),
-            child: Row(
-              children: [
-                const Spacer(), // Push icons to align with item actions area
-
-                // Additional spacing to fine-tune alignment slightly more to the right
-                const SizedBox(width: 8),
-
-                // Bulk Delete Icon - always use delete icon, aligned above selection checkboxes
-                IconButton(
-                  icon: Icon(
-                    Icons.delete_outline,
-                    color: _hasSelectedItems()
-                        ? Theme.of(context).colorScheme.error
-                        : Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant
-                            .withOpacity(0.5),
-                  ),
-                  tooltip: _hasSelectedItems()
-                      ? 'Delete Selected Items'
-                      : 'Select All Items',
-                  onPressed: _hasSelectedItems()
-                      ? () => _bulkDeleteItems(context)
-                      : () => _toggleSelectAll(),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Theme.of(context).colorScheme.surface,
+                    Theme.of(context)
+                        .colorScheme
+                        .surface
+                        .withOpacity(0.8),
+                  ],
                 ),
+              ),
+              child: Row(
+                children: [
+                  const Spacer(), // Push icons to align with item actions area
 
-                // Toggle All Needed checkbox - aligned above individual needed checkboxes
-                Transform.scale(
-                  scale: 1.2,
-                  child: Checkbox(
-                    value: allNeeded,
-                    tristate: true,
-                    onChanged: (value) => _toggleAllNeeded(),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  // Match individual item layout exactly: 4px spacer
+                  const SizedBox(width: 4),
+
+                  // Edit button placeholder (invisible) - exact same as individual items
+                  const SizedBox(
+                    width: 32, // Same width as edit IconButton in grocery_item_tile.dart
+                    height: 32,
                   ),
-                ),
-                const SizedBox(
-                    width: 8), // Reduced padding to move icons slightly right
-              ],
+
+                  // Additional 12px spacing to move both icons 10px more to the right
+                  const SizedBox(width: 12),
+
+                  // Bulk Delete Icon - moved 10px right
+                  IconButton(
+                    icon: Icon(
+                      Icons.delete_outline,
+                      color: _hasSelectedItems()
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant
+                              .withOpacity(0.5),
+                    ),
+                    tooltip: _hasSelectedItems()
+                        ? 'Delete Selected Items'
+                        : 'Select All Items',
+                    onPressed: _hasSelectedItems()
+                        ? () => _bulkDeleteItems(context)
+                        : () => _toggleSelectAll(),
+                    iconSize: 20, // Match individual item icon size
+                    padding: EdgeInsets.zero, // Match individual item padding
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32), // Match individual item constraints
+                  ),
+
+                  // Toggle All Needed checkbox - also moved 2px right (no additional spacing)
+                  Transform.scale(
+                    scale: 1.2,
+                    child: Checkbox(
+                      value: allNeeded,
+                      tristate: true,
+                      onChanged: (value) => _toggleAllNeeded(),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                  const SizedBox(
+                      width: 8), // Final right padding
+                ],
+              ),
             ),
           ),
         ),
@@ -432,18 +455,22 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            itemCountText,
-            style: AppTextStyles.bodyMedium,
+          Expanded(
+            child: Text(
+              itemCountText,
+              style: AppTextStyles.bodyMedium,
+            ),
           ),
+          const SizedBox(width: 8), // Add spacing between count and timestamp
           lastSavedAsync.when(
             data: (lastSaved) => Text(
               lastSaved != null
-                  ? 'Last saved: ${DateFormat('d MMM yy, h:mm a').format(lastSaved)}'
+                  ? DateFormat('d MMM yy, h:mm a').format(lastSaved)
                   : 'Not saved yet',
               style: AppTextStyles.labelMedium.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
+              textAlign: TextAlign.end,
             ),
             loading: () => const SizedBox(
               width: 16,
