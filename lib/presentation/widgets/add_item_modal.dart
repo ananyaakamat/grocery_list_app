@@ -19,6 +19,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _qtyValueController = TextEditingController();
+  final _priceController = TextEditingController(); // Added price controller
 
   String? _selectedUnit;
   bool _needed = false;
@@ -38,6 +39,9 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
       final item = widget.itemToEdit!;
       _nameController.text = item.name;
       _qtyValueController.text = item.qtyValue?.toString() ?? '';
+      _priceController.text = item.price > 0
+          ? item.price.toStringAsFixed(2)
+          : ''; // Initialize price
       _selectedUnit = item.qtyUnit;
       _needed = item.needed;
     }
@@ -47,6 +51,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
   void dispose() {
     _nameController.dispose();
     _qtyValueController.dispose();
+    _priceController.dispose(); // Dispose price controller
     super.dispose();
   }
 
@@ -113,6 +118,8 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
           _buildNameField(),
           const SizedBox(height: 16),
           _buildQuantitySection(),
+          const SizedBox(height: 16),
+          _buildPriceField(), // Added price field
           const SizedBox(height: 16),
           _buildNeededCheckbox(),
           const SizedBox(height: 16),
@@ -311,6 +318,61 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
     return items;
   }
 
+  Widget _buildPriceField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Price (Rs)',
+          style: AppTextStyles.labelLarge,
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _priceController,
+          decoration: const InputDecoration(
+            hintText: '0.00',
+            prefixIcon: Icon(Icons.currency_rupee),
+            suffixText: 'Rs',
+          ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d{0,5}(\.\d{0,2})?')),
+          ],
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return null; // Price is optional
+            }
+
+            final double? price = double.tryParse(value);
+            if (price == null) return 'Please enter a valid number';
+
+            if (price < 0) return 'Price cannot be negative';
+            if (price > 10000.99) return 'Price cannot exceed Rs 10,000.99';
+
+            // Check decimal places
+            final parts = value.split('.');
+            if (parts.length > 1 && parts[1].length > 2) {
+              return 'Price can have maximum 2 decimal places';
+            }
+
+            return null; // Valid price
+          },
+          onChanged: (value) {
+            // Simple formatting without complex logic for now
+            setState(() {}); // Just trigger rebuild to clear duplicate error
+          },
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Optional. Maximum Rs 10,000.99',
+          style: AppTextStyles.bodySmall.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildNeededCheckbox() {
     return CheckboxListTile(
       title: const Text(
@@ -426,12 +488,17 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
           ? double.parse(_qtyValueController.text)
           : null;
 
+      final price = _priceController.text.isNotEmpty
+          ? double.parse(_priceController.text)
+          : 0.0;
+
       if (_isEditing) {
         final updatedItem = widget.itemToEdit!
             .copyWith(
               name: name.trim(),
               qtyValue: qtyValue,
               qtyUnit: _selectedUnit,
+              price: price, // Added price update
               needed: _needed,
             )
             .withUpdatedTimestamp();
@@ -445,6 +512,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
           name: name,
           qtyValue: qtyValue,
           qtyUnit: _selectedUnit,
+          price: price, // Added price to create
           needed: _needed,
           position: position,
           listId: currentListId,

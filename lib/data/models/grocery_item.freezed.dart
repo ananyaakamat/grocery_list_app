@@ -24,6 +24,8 @@ mixin _$GroceryItem {
   String get name => throw _privateConstructorUsedError;
   double? get qtyValue => throw _privateConstructorUsedError;
   String? get qtyUnit => throw _privateConstructorUsedError;
+  double get price =>
+      throw _privateConstructorUsedError; // Added price field with default 0.0
   bool get needed => throw _privateConstructorUsedError;
   int get position => throw _privateConstructorUsedError;
   int get listId =>
@@ -52,6 +54,7 @@ abstract class $GroceryItemCopyWith<$Res> {
       String name,
       double? qtyValue,
       String? qtyUnit,
+      double price,
       bool needed,
       int position,
       int listId,
@@ -78,6 +81,7 @@ class _$GroceryItemCopyWithImpl<$Res, $Val extends GroceryItem>
     Object? name = null,
     Object? qtyValue = freezed,
     Object? qtyUnit = freezed,
+    Object? price = null,
     Object? needed = null,
     Object? position = null,
     Object? listId = null,
@@ -101,6 +105,10 @@ class _$GroceryItemCopyWithImpl<$Res, $Val extends GroceryItem>
           ? _value.qtyUnit
           : qtyUnit // ignore: cast_nullable_to_non_nullable
               as String?,
+      price: null == price
+          ? _value.price
+          : price // ignore: cast_nullable_to_non_nullable
+              as double,
       needed: null == needed
           ? _value.needed
           : needed // ignore: cast_nullable_to_non_nullable
@@ -138,6 +146,7 @@ abstract class _$$GroceryItemImplCopyWith<$Res>
       String name,
       double? qtyValue,
       String? qtyUnit,
+      double price,
       bool needed,
       int position,
       int listId,
@@ -162,6 +171,7 @@ class __$$GroceryItemImplCopyWithImpl<$Res>
     Object? name = null,
     Object? qtyValue = freezed,
     Object? qtyUnit = freezed,
+    Object? price = null,
     Object? needed = null,
     Object? position = null,
     Object? listId = null,
@@ -185,6 +195,10 @@ class __$$GroceryItemImplCopyWithImpl<$Res>
           ? _value.qtyUnit
           : qtyUnit // ignore: cast_nullable_to_non_nullable
               as String?,
+      price: null == price
+          ? _value.price
+          : price // ignore: cast_nullable_to_non_nullable
+              as double,
       needed: null == needed
           ? _value.needed
           : needed // ignore: cast_nullable_to_non_nullable
@@ -217,6 +231,7 @@ class _$GroceryItemImpl implements _GroceryItem {
       required this.name,
       this.qtyValue,
       this.qtyUnit,
+      this.price = 0.0,
       this.needed = false,
       required this.position,
       required this.listId,
@@ -236,6 +251,10 @@ class _$GroceryItemImpl implements _GroceryItem {
   final String? qtyUnit;
   @override
   @JsonKey()
+  final double price;
+// Added price field with default 0.0
+  @override
+  @JsonKey()
   final bool needed;
   @override
   final int position;
@@ -249,7 +268,7 @@ class _$GroceryItemImpl implements _GroceryItem {
 
   @override
   String toString() {
-    return 'GroceryItem(id: $id, name: $name, qtyValue: $qtyValue, qtyUnit: $qtyUnit, needed: $needed, position: $position, listId: $listId, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'GroceryItem(id: $id, name: $name, qtyValue: $qtyValue, qtyUnit: $qtyUnit, price: $price, needed: $needed, position: $position, listId: $listId, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -262,6 +281,7 @@ class _$GroceryItemImpl implements _GroceryItem {
             (identical(other.qtyValue, qtyValue) ||
                 other.qtyValue == qtyValue) &&
             (identical(other.qtyUnit, qtyUnit) || other.qtyUnit == qtyUnit) &&
+            (identical(other.price, price) || other.price == price) &&
             (identical(other.needed, needed) || other.needed == needed) &&
             (identical(other.position, position) ||
                 other.position == position) &&
@@ -275,7 +295,7 @@ class _$GroceryItemImpl implements _GroceryItem {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, name, qtyValue, qtyUnit,
-      needed, position, listId, createdAt, updatedAt);
+      price, needed, position, listId, createdAt, updatedAt);
 
   /// Create a copy of GroceryItem
   /// with the given fields replaced by the non-null parameter values.
@@ -299,6 +319,7 @@ abstract class _GroceryItem implements GroceryItem {
       required final String name,
       final double? qtyValue,
       final String? qtyUnit,
+      final double price,
       final bool needed,
       required final int position,
       required final int listId,
@@ -316,6 +337,8 @@ abstract class _GroceryItem implements GroceryItem {
   double? get qtyValue;
   @override
   String? get qtyUnit;
+  @override
+  double get price; // Added price field with default 0.0
   @override
   bool get needed;
   @override

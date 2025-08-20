@@ -55,14 +55,31 @@ class GroceryItemTile extends StatelessWidget {
   }
 
   Widget _buildItemName(BuildContext context) {
-    return Text(
-      item.name,
-      style: AppTextStyles.bodyLarge.copyWith(
-        decoration: item.needed ? null : TextDecoration.lineThrough,
-        color: item.needed
-            ? Theme.of(context).colorScheme.onSurface
-            : Theme.of(context).colorScheme.onSurfaceVariant,
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Item name
+        Text(
+          item.name,
+          style: AppTextStyles.bodyLarge.copyWith(
+            decoration: item.needed ? null : TextDecoration.lineThrough,
+            color: item.needed
+                ? Theme.of(context).colorScheme.onSurface
+                : Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        // Price display (show only if price > 0)
+        if (item.price > 0) ...[
+          const SizedBox(height: 2),
+          Text(
+            item.formattedPrice,
+            style: AppTextStyles.labelMedium.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
     );
   }
 

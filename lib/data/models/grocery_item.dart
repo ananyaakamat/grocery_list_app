@@ -10,6 +10,7 @@ class GroceryItem with _$GroceryItem {
     required String name,
     double? qtyValue,
     String? qtyUnit,
+    @Default(0.0) double price, // Added price field with default 0.0
     @Default(false) bool needed,
     required int position,
     required int listId, // Added for CR1 multi-list feature
@@ -25,6 +26,7 @@ class GroceryItem with _$GroceryItem {
     required String name,
     double? qtyValue,
     String? qtyUnit,
+    double price = 0.0, // Added price parameter with default
     bool needed = false,
     required int position,
     required int listId, // Added for CR1 multi-list feature
@@ -34,6 +36,7 @@ class GroceryItem with _$GroceryItem {
       name: name.trim(),
       qtyValue: qtyValue,
       qtyUnit: qtyUnit,
+      price: price,
       needed: needed,
       position: position,
       listId: listId,
@@ -51,6 +54,7 @@ extension GroceryItemExtensions on GroceryItem {
       'name': name,
       'qty_value': qtyValue,
       'qty_unit': qtyUnit,
+      'price': price, // Added price field
       'needed': needed ? 1 : 0,
       'position': position,
       'list_id': listId, // Added for CR1 multi-list feature
@@ -66,6 +70,7 @@ extension GroceryItemExtensions on GroceryItem {
       name: map['name'] as String,
       qtyValue: map['qty_value'] as double?,
       qtyUnit: map['qty_unit'] as String?,
+      price: (map['price'] as double?) ?? 0.0, // Added price field with default
       needed: (map['needed'] as int) == 1,
       position: map['position'] as int,
       listId: map['list_id'] as int? ??
@@ -93,6 +98,37 @@ extension GroceryItemExtensions on GroceryItem {
     if (unitStr.isEmpty) return valueStr;
 
     return '$valueStr $unitStr';
+  }
+
+  // Get formatted price string
+  String get formattedPrice {
+    return '${price.toStringAsFixed(2)} Rs';
+  }
+
+  // Validate price value
+  static String? validatePrice(String? value) {
+    if (value == null || value.isEmpty) return null; // Price is optional
+
+    final double? price = double.tryParse(value);
+    if (price == null) return 'Please enter a valid number';
+
+    if (price < 0) return 'Price cannot be negative';
+    if (price > 10000.99) return 'Price cannot exceed Rs 10,000.99';
+
+    // Check decimal places
+    final parts = value.split('.');
+    if (parts.length > 1 && parts[1].length > 2) {
+      return 'Price can have maximum 2 decimal places';
+    }
+
+    return null; // Valid price
+  }
+
+  // Parse and format price input
+  static double parsePrice(String? value) {
+    if (value == null || value.isEmpty) return 0.0;
+    final price = double.tryParse(value) ?? 0.0;
+    return price.clamp(0.0, 10000.99);
   }
 
   // Check if item is valid

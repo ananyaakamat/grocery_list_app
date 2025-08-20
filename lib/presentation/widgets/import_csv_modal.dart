@@ -186,7 +186,7 @@ class _ImportCsvModalState extends ConsumerState<ImportCsvModal> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Sl No, Item, Qty Value, Qty Unit, Needed',
+              'Sl No, Item, Qty Value, Qty Unit, Needed, Price',
               style: AppTextStyles.bodySmall.copyWith(
                 fontFamily: 'monospace',
               ),

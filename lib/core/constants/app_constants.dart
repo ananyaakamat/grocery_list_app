@@ -5,8 +5,7 @@ class AppConstants {
 
   // Database
   static const String databaseName = 'annadaata_grocery.db';
-  static const int databaseVersion =
-      4; // Updated to fix position constraint issues
+  static const int databaseVersion = 5; // Updated to add price field support
 
   // Tables
   static const String itemsTable = 'items';
@@ -21,7 +20,8 @@ class AppConstants {
     'Item',
     'Qty Value',
     'Qty Unit',
-    'Needed'
+    'Needed',
+    'Price'
   ];
 
   // App Meta Keys

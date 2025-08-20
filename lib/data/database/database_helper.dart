@@ -131,6 +131,7 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         qty_value REAL,
         qty_unit TEXT,
+        price REAL NOT NULL DEFAULT 0.0,
         needed INTEGER NOT NULL DEFAULT 0,
         position INTEGER NOT NULL,
         list_id INTEGER NOT NULL DEFAULT 1,
@@ -191,6 +192,10 @@ class DatabaseHelper {
     if (oldVersion < 4) {
       // Migration from version 3 to 4: Fix position constraint issues
       await _migrateToV4(db);
+    }
+    if (oldVersion < 5) {
+      // Migration from version 4 to 5: Add price field support
+      await _migrateToV5(db);
     }
   }
 
@@ -323,6 +328,32 @@ class DatabaseHelper {
       debugPrint('Successfully migrated database to version 4');
     } catch (e) {
       debugPrint('Error during migration to V4: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _migrateToV5(Database db) async {
+    try {
+      debugPrint('Starting migration to V5: Adding price field support...');
+
+      // Check if items table already has price column
+      final tables =
+          await db.rawQuery("PRAGMA table_info(${AppConstants.itemsTable})");
+      final hasPrice = tables.any((column) => column['name'] == 'price');
+
+      if (!hasPrice) {
+        // Add price column to items table
+        await db.execute('''
+          ALTER TABLE ${AppConstants.itemsTable} 
+          ADD COLUMN price REAL NOT NULL DEFAULT 0.0
+        ''');
+
+        debugPrint('Added price column to items table with default value 0.0');
+      }
+
+      debugPrint('Successfully migrated database to version 5');
+    } catch (e) {
+      debugPrint('Error during migration to V5: $e');
       rethrow;
     }
   }

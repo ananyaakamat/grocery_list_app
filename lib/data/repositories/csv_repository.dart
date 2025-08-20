@@ -181,6 +181,7 @@ class CsvRepository {
             '',
         item.qtyUnit ?? '',
         item.needed ? 'Y' : 'N',
+        item.price.toStringAsFixed(2),
       ]);
     }
 
@@ -196,8 +197,8 @@ class CsvRepository {
 
     // Add sample data rows with placeholder Sl No values
     // The import logic ignores Sl No column anyway and auto-generates positions
-    csvData.add(['1', 'Apples', '2', 'kg', 'Y']);
-    csvData.add(['2', 'Milk', '1', 'liter', 'Y']);
+    csvData.add(['1', 'Apples', '2', 'kg', 'Y', '150.00']);
+    csvData.add(['2', 'Milk', '1', 'liter', 'Y', '60.00']);
     csvData.add(['3', 'Bread', '', 'loaf', 'N']);
     csvData.add(['4', 'Eggs', '12', 'pieces', 'Y']);
 
@@ -294,8 +295,8 @@ class CsvRepository {
   }
 
   GroceryItem? _parseRowToItem(List<dynamic> row, int position, int listId) {
-    if (row.length < 5) {
-      throw Exception('Insufficient columns. Expected 5, got ${row.length}');
+    if (row.length < 6) {
+      throw Exception('Insufficient columns. Expected 6, got ${row.length}');
     }
 
     // Parse item name (required)
@@ -343,13 +344,28 @@ class CsvRepository {
       throw Exception('Invalid needed value: $neededStr. Expected Y/N');
     }
 
+    // Parse price (optional, defaults to 0.0)
+    double price = 0.0;
+    final priceStr = row[5]?.toString().trim() ?? '';
+    if (priceStr.isNotEmpty) {
+      final parsedPrice = double.tryParse(priceStr);
+      if (parsedPrice == null) {
+        throw Exception('Invalid price value: $priceStr');
+      }
+      if (parsedPrice < 0 || parsedPrice > 10000) {
+        throw Exception('Price must be between 0.00 and 10000.00');
+      }
+      price = parsedPrice;
+    }
+
     return GroceryItem.create(
       name: name,
       qtyValue: qtyValue,
       qtyUnit: qtyUnit,
       needed: needed,
+      listId: listId,
       position: position,
-      listId: listId, // Use the provided listId instead of hardcoded 1
+      price: price,
     );
   }
 

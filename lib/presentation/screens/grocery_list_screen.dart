@@ -301,23 +301,38 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                   end: Alignment.bottomRight,
                   colors: [
                     Theme.of(context).colorScheme.surface,
-                    Theme.of(context)
-                        .colorScheme
-                        .surface
-                        .withOpacity(0.8),
+                    Theme.of(context).colorScheme.surface.withOpacity(0.8),
                   ],
                 ),
               ),
               child: Row(
                 children: [
-                  const Spacer(), // Push icons to align with item actions area
+                  // Total of needed items on the left
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16),
+                    child: Text(
+                      'Total: ${_calculateNeededTotal(items)}',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontSize: (Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.fontSize ??
+                                    14) *
+                                1.5,
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                  const Spacer(), // Push icons to right side
 
                   // Match individual item layout exactly: 4px spacer
                   const SizedBox(width: 4),
 
                   // Edit button placeholder (invisible) - exact same as individual items
                   const SizedBox(
-                    width: 32, // Same width as edit IconButton in grocery_item_tile.dart
+                    width:
+                        32, // Same width as edit IconButton in grocery_item_tile.dart
                     height: 32,
                   ),
 
@@ -343,7 +358,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                         : () => _toggleSelectAll(),
                     iconSize: 20, // Match individual item icon size
                     padding: EdgeInsets.zero, // Match individual item padding
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32), // Match individual item constraints
+                    constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32), // Match individual item constraints
                   ),
 
                   // Toggle All Needed checkbox - also moved 2px right (no additional spacing)
@@ -356,8 +373,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   ),
-                  const SizedBox(
-                      width: 8), // Final right padding
+                  const SizedBox(width: 8), // Final right padding
                 ],
               ),
             ),
@@ -911,5 +927,13 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
         );
       }
     }
+  }
+
+  // Calculate total price of needed items
+  String _calculateNeededTotal(List<GroceryItem> items) {
+    final total = items
+        .where((item) => item.needed)
+        .fold<double>(0.0, (sum, item) => sum + item.price);
+    return '₹${total.toStringAsFixed(2)}';
   }
 }
