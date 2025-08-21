@@ -5,7 +5,8 @@ class AppConstants {
 
   // Database
   static const String databaseName = 'annadaata_grocery.db';
-  static const int databaseVersion = 5; // Updated to add price field support
+  static const int databaseVersion =
+      6; // Updated to add description and URL fields
 
   // Tables
   static const String itemsTable = 'items';
@@ -50,7 +51,12 @@ class QuantityUnits {
     'bunch',
     'bundle',
     'dozen',
-    'tray'
+    'tray',
+    'bars',
+    'sachets',
+    'rolls',
+    'pack',
+    'set'
   ];
 
   // Semi-solids/Powders
@@ -72,7 +78,8 @@ class QuantityUnits {
     'bottle',
     'bottles',
     'can',
-    'tetra-pack'
+    'tetra-pack',
+    'refills'
   ];
 
   // Small measures

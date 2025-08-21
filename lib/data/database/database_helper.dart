@@ -120,7 +120,9 @@ class DatabaseHelper {
         name TEXT NOT NULL UNIQUE,
         position INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        url TEXT DEFAULT ''
       )
     ''');
 
@@ -196,6 +198,10 @@ class DatabaseHelper {
     if (oldVersion < 5) {
       // Migration from version 4 to 5: Add price field support
       await _migrateToV5(db);
+    }
+    if (oldVersion < 6) {
+      // Migration from version 5 to 6: Add description and URL fields
+      await _migrateToV6(db);
     }
   }
 
@@ -354,6 +360,43 @@ class DatabaseHelper {
       debugPrint('Successfully migrated database to version 5');
     } catch (e) {
       debugPrint('Error during migration to V5: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _migrateToV6(Database db) async {
+    try {
+      debugPrint(
+          'Starting migration to V6: Adding description and URL fields...');
+
+      // Check if grocery_lists table already has description column
+      final tables = await db
+          .rawQuery("PRAGMA table_info(${AppConstants.groceryListsTable})");
+      final hasDescription =
+          tables.any((column) => column['name'] == 'description');
+      final hasUrl = tables.any((column) => column['name'] == 'url');
+
+      if (!hasDescription) {
+        // Add description column to grocery_lists table
+        await db.execute('''
+          ALTER TABLE ${AppConstants.groceryListsTable} 
+          ADD COLUMN description TEXT DEFAULT ''
+        ''');
+        debugPrint('Added description column to grocery_lists table');
+      }
+
+      if (!hasUrl) {
+        // Add url column to grocery_lists table
+        await db.execute('''
+          ALTER TABLE ${AppConstants.groceryListsTable} 
+          ADD COLUMN url TEXT DEFAULT ''
+        ''');
+        debugPrint('Added url column to grocery_lists table');
+      }
+
+      debugPrint('Successfully migrated database to version 6');
+    } catch (e) {
+      debugPrint('Error during migration to V6: $e');
       rethrow;
     }
   }

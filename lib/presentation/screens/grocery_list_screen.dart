@@ -9,6 +9,7 @@ import '../widgets/grocery_item_tile.dart';
 import '../widgets/add_item_modal.dart';
 import '../widgets/import_csv_modal.dart';
 import '../widgets/help_screen.dart';
+import '../widgets/list_details_modal.dart';
 
 class GroceryListScreen extends ConsumerStatefulWidget {
   final GroceryList groceryList; // Added for CR1 - list-scoped screen
@@ -249,6 +250,12 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                         icon: const Icon(Icons.save),
                         tooltip: 'Save',
                         onPressed: () => _saveItems(context),
+                      ),
+                      // Recipe Details (formerly List Details)
+                      IconButton(
+                        icon: const Icon(Icons.restaurant_menu),
+                        tooltip: 'Recipe Details',
+                        onPressed: () => _showListDetailsModal(context),
                       ),
                       // Help
                       IconButton(
@@ -798,6 +805,38 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const HelpScreen(),
+      ),
+    );
+  }
+
+  void _showListDetailsModal(BuildContext context) {
+    // Get the current list from provider to ensure we have the latest data
+    final currentLists = ref.read(groceryListsProvider).value ?? [];
+    final currentList = currentLists.firstWhere(
+      (list) => list.id == widget.groceryList.id,
+      orElse: () => widget.groceryList,
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => ListDetailsModal(
+        initialDescription: currentList.description,
+        initialUrl: currentList.url,
+        onSave: (description, url) {
+          final updatedList = currentList.copyWith(
+            description: description.trim(), // Trim spaces before saving
+            url: url.trim(), // Trim spaces before saving
+            updatedAt: DateTime.now(),
+          );
+          ref.read(groceryListsProvider.notifier).updateList(updatedList);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Recipe details updated successfully'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        },
       ),
     );
   }

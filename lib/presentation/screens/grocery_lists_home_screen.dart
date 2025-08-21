@@ -246,7 +246,7 @@ class _GroceryListsHomeScreenState extends ConsumerState<GroceryListsHomeScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Updated ${_formatDate(list.updatedAt)}',
+                        _formatDate(list.updatedAt),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color:
                                   colorScheme.onSurfaceVariant.withOpacity(0.7),
@@ -387,7 +387,7 @@ class _GroceryListsHomeScreenState extends ConsumerState<GroceryListsHomeScreen>
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat('d/M/yy h:mm a').format(date);
+    return DateFormat('d MMM yy, h:mm a').format(date);
   }
 
   void _navigateToListItems(BuildContext context, GroceryList list) async {

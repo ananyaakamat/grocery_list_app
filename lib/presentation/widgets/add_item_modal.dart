@@ -346,7 +346,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
             final double? price = double.tryParse(value);
             if (price == null) return 'Please enter a valid number';
 
-            if (price < 0) return 'Price cannot be negative';
+            if (price < 1) return 'Minimum price is Rs 1';
             if (price > 10000.99) return 'Price cannot exceed Rs 10,000.99';
 
             // Check decimal places
@@ -364,7 +364,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Optional. Maximum Rs 10,000.99',
+          'Optional. Minimum Rs 1, Maximum Rs 10,000.99',
           style: AppTextStyles.bodySmall.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),

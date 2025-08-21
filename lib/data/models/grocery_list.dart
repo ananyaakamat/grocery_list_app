@@ -4,6 +4,8 @@ class GroceryList {
   final int position;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String description;
+  final String url;
 
   const GroceryList({
     this.id,
@@ -11,6 +13,8 @@ class GroceryList {
     required this.position,
     required this.createdAt,
     required this.updatedAt,
+    this.description = '',
+    this.url = '',
   });
 
   // Create a new grocery list
@@ -24,6 +28,8 @@ class GroceryList {
       position: position,
       createdAt: now,
       updatedAt: now,
+      description: '',
+      url: '',
     );
   }
 
@@ -35,6 +41,8 @@ class GroceryList {
       position: map['position'] as int? ?? 0,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      description: map['description'] as String? ?? '',
+      url: map['url'] as String? ?? '',
     );
   }
 
@@ -46,6 +54,8 @@ class GroceryList {
       'position': position,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'description': description,
+      'url': url,
     };
   }
 
@@ -56,6 +66,8 @@ class GroceryList {
     int? position,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? description,
+    String? url,
   }) {
     return GroceryList(
       id: id ?? this.id,
@@ -63,6 +75,8 @@ class GroceryList {
       position: position ?? this.position,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      description: description ?? this.description,
+      url: url ?? this.url,
     );
   }
 
@@ -82,16 +96,19 @@ class GroceryList {
         other.name == name &&
         other.position == position &&
         other.createdAt == createdAt &&
-        other.updatedAt == updatedAt;
+        other.updatedAt == updatedAt &&
+        other.description == description &&
+        other.url == url;
   }
 
   @override
   int get hashCode {
-    return Object.hash(id, name, position, createdAt, updatedAt);
+    return Object.hash(
+        id, name, position, createdAt, updatedAt, description, url);
   }
 
   @override
   String toString() {
-    return 'GroceryList(id: $id, name: $name, position: $position, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'GroceryList(id: $id, name: $name, position: $position, createdAt: $createdAt, updatedAt: $updatedAt, description: $description, url: $url)';
   }
 }

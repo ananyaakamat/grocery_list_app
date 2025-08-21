@@ -47,6 +47,10 @@ class HelpScreen extends StatelessWidget {
             'Tap the import icon to import items from a CSV file or download a sample template. Your CSV files can now include prices! Choose "Merge" to add items to your current list or "Replace" to clear the list first. Export your lists as CSV files to backup your data or share with others. The export includes all item information including prices.',
           ),
           _buildSection(
+            'Recipe Details & Website Links',
+            'Use the Recipe Details icon (restaurant menu) to add descriptions and website links to your grocery lists. This is perfect for storing recipe notes, cooking instructions, or YouTube cooking video links. Click the restaurant menu icon in the toolbar to add a description and website URL. Saved URLs become clickable links that open in your browser or YouTube app. The description field is great for storing recipe details, cooking notes, or shopping reminders. Both fields automatically trim extra spaces for clean storage.',
+          ),
+          _buildSection(
             'Auto-Save & Data Safety',
             'The app automatically saves all your changes. You can see the "Last Saved" time at the bottom of each list. Your data is stored safely on your device and never sent to external servers.',
           ),
@@ -183,6 +187,14 @@ class HelpScreen extends StatelessWidget {
             _buildFaqItem(
               'Q: Can I export only needed items?',
               'A: Yes! Filter to show only "Needed" items, then tap export. The CSV will contain only those items with their prices.',
+            ),
+            _buildFaqItem(
+              'Q: How do I add recipe details to my list?',
+              'A: Click the restaurant menu icon in the toolbar to open Recipe Details. Add a description for recipe notes and a website URL for cooking videos or recipes. URLs automatically open in your browser or YouTube app when clicked.',
+            ),
+            _buildFaqItem(
+              'Q: Why won\'t my recipe URL open?',
+              'A: Make sure the URL is properly formatted (e.g., https://youtube.com/...). The app automatically adds "https://" if missing. Ensure you have a browser or YouTube app installed to handle the link.',
             ),
             _buildFaqItem(
               'Q: How do I reorder my grocery list?',
