@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/validation_utils.dart';
 import '../../data/models/grocery_item.dart';
 import '../providers/app_providers.dart';
 
@@ -198,13 +199,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
             if (_duplicateError != null) {
               return null; // The duplicate error is shown via errorText
             }
-            if (value == null || value.trim().isEmpty) {
-              return 'Please enter an item name';
-            }
-            if (value.trim().length > AppConstants.maxItemNameLength) {
-              return 'Item name too long (max ${AppConstants.maxItemNameLength} characters)';
-            }
-            return null;
+            return ValidationUtils.validateItemName(value);
           },
           onChanged: (value) => setState(() {
             _duplicateError = null; // Clear error when user types
@@ -223,39 +218,55 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
           style: AppTextStyles.labelLarge,
         ),
         const SizedBox(height: 8),
-        Row(
+        // Use Column layout instead of Row for better error display
+        Column(
           children: [
-            Expanded(
-              flex: 2,
-              child: TextFormField(
-                controller: _qtyValueController,
-                decoration: const InputDecoration(
-                  hintText: 'Qty',
-                  prefixIcon: Icon(Icons.numbers),
-                ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                ],
-                validator: (value) {
-                  if (value != null && value.isNotEmpty) {
-                    final parsed = double.tryParse(value);
-                    if (parsed == null) {
-                      return 'Invalid number';
-                    }
-                    if (parsed <= 0) {
-                      return 'Must be greater than 0';
-                    }
-                  }
-                  return null;
-                },
+            // Quantity Value Field
+            TextFormField(
+              controller: _qtyValueController,
+              decoration: const InputDecoration(
+                hintText: 'Enter quantity (e.g., 2.5)',
+                prefixIcon: Icon(Icons.numbers),
+                labelText: 'Quantity Value',
               ),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+              ],
+              validator: (value) {
+                // First validate the quantity value itself
+                final qtyValidation =
+                    ValidationUtils.validateQuantityValue(value);
+                if (qtyValidation != null) return qtyValidation;
+
+                // Then validate the qty/UOM relationship
+                final relationshipValidation =
+                    ValidationUtils.validateQuantityUomRelationship(
+                  qtyValue: value,
+                  uom: _selectedUnit,
+                );
+                return relationshipValidation;
+              },
+              onChanged: (value) {
+                setState(() {
+                  // Trigger validation update for unit field when quantity changes
+                  if (_formKey.currentState != null) {
+                    _formKey.currentState!.validate();
+                  }
+                });
+              },
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 3,
-              child: _buildUnitDropdown(),
+            const SizedBox(height: 16),
+            // Unit Dropdown Field
+            _buildUnitDropdown(),
+            const SizedBox(height: 8),
+            // Helpful text
+            Text(
+              'Both quantity and unit are required when adding measurements',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -267,16 +278,24 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
     return DropdownButtonFormField<String>(
       value: _selectedUnit,
       decoration: const InputDecoration(
-        hintText: 'Unit',
+        hintText: 'Select unit (e.g., kg, pieces)',
         prefixIcon: Icon(Icons.straighten),
+        labelText: 'Unit of Measure',
       ),
       items: _buildUnitDropdownItems(),
-      onChanged: (value) => setState(() => _selectedUnit = value),
+      onChanged: (value) => setState(() {
+        _selectedUnit = value;
+        // Trigger validation update for quantity field
+        _formKey.currentState?.validate();
+      }),
       validator: (value) {
-        if (_qtyValueController.text.isNotEmpty && value == null) {
-          return 'Please select a unit';
-        }
-        return null;
+        // Validate the qty/UOM relationship from the UOM side
+        final relationshipValidation =
+            ValidationUtils.validateQuantityUomRelationship(
+          qtyValue: _qtyValueController.text,
+          uom: value,
+        );
+        return relationshipValidation;
       },
     );
   }
@@ -339,23 +358,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
             FilteringTextInputFormatter.allow(RegExp(r'^\d{0,5}(\.\d{0,2})?')),
           ],
           validator: (value) {
-            if (value == null || value.isEmpty) {
-              return null; // Price is optional
-            }
-
-            final double? price = double.tryParse(value);
-            if (price == null) return 'Please enter a valid number';
-
-            if (price < 1) return 'Minimum price is Rs 1';
-            if (price > 10000.99) return 'Price cannot exceed Rs 10,000.99';
-
-            // Check decimal places
-            final parts = value.split('.');
-            if (parts.length > 1 && parts[1].length > 2) {
-              return 'Price can have maximum 2 decimal places';
-            }
-
-            return null; // Valid price
+            return ValidationUtils.validatePrice(value);
           },
           onChanged: (value) {
             // Simple formatting without complex logic for now
@@ -364,7 +367,7 @@ class _AddItemModalState extends ConsumerState<AddItemModal> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Optional. Minimum Rs 1, Maximum Rs 10,000.99',
+          'Optional. Must be greater than 0, Maximum Rs 10,000.99',
           style: AppTextStyles.bodySmall.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),

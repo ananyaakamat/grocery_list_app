@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/utils/validation_utils.dart';
 import '../../data/models/grocery_list.dart';
 import '../providers/app_providers.dart';
 
@@ -113,13 +114,7 @@ class _AddEditListModalState extends ConsumerState<AddEditListModal> {
                           errorText: _errorMessage,
                         ),
                         validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter a list name';
-                          }
-                          if (value.trim().length > 50) {
-                            return 'List name must be 50 characters or less';
-                          }
-                          return null;
+                          return ValidationUtils.validateListName(value);
                         },
                         onChanged: (value) {
                           if (_errorMessage != null) {
