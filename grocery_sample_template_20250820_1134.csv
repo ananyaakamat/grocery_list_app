@@ -1,0 +1,15 @@
+Sl No,Item,Qty Value,Qty Unit,Needed,Price
+1,Apples,2,kg,Y,150
+2,Milk,1,L,Y,60
+3,Eggs,12,pieces,Y,100
+4,Mangoes,1,kg,Y,120
+5,Banana,1,kg,Y,60
+6,Orange,1,kg,Y,80
+7,Moong Dal,2,kg,Y,120
+8,Raggi,2,kg,Y,160
+9,Maida,2,kg,Y,150
+10,Sugar,5,kg,Y,160
+11,Biscuit,1,pieces,Y,80.5
+12,Chicken,1,kg,N,150
+13,Mutton,1,kg,N,750
+14,Peas,2,kg,N,250.5

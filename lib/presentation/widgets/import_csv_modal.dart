@@ -285,8 +285,24 @@ class _ImportCsvModalState extends ConsumerState<ImportCsvModal> {
       final importResult =
           await csvRepository.parseCsvFile(filePath, widget.listId);
 
+      // If there are validation errors, close modal and return errors to parent
+      if (importResult.hasErrors) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          // Close the import modal and return the errors
+          Navigator.of(context).pop(importResult.errors);
+        }
+        return;
+      }
+
       if (!importResult.hasValidItems) {
-        throw Exception('No valid items found in CSV');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No valid items found in CSV')),
+          );
+        }
+        setState(() => _isLoading = false);
+        return;
       }
 
       // Apply import
@@ -306,9 +322,7 @@ class _ImportCsvModalState extends ConsumerState<ImportCsvModal> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Imported ${importResult.validItems.length} items'
-              '${importResult.hasErrors ? ' with ${importResult.errors.length} errors' : ''}',
-            ),
+                'Successfully imported ${importResult.validItems.length} items'),
             action: SnackBarAction(
               label: 'Save',
               onPressed: () async {

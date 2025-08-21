@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/grocery_item.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/validation_utils.dart';
 
 class CsvImportResult {
   final List<GroceryItem> validItems;
@@ -27,14 +28,30 @@ class CsvImportResult {
 
 class CsvImportError {
   final int lineNumber;
-  final String reason;
+  final String field;
+  final String value;
+  final String message;
   final String rawData;
 
   CsvImportError({
     required this.lineNumber,
-    required this.reason,
+    required this.field,
+    required this.value,
+    required this.message,
     required this.rawData,
   });
+
+  // Legacy constructor for backward compatibility
+  CsvImportError.legacy({
+    required this.lineNumber,
+    required String reason,
+    required this.rawData,
+  })  : field = 'General',
+        value = '',
+        message = reason;
+
+  // Property for backward compatibility
+  String get reason => message;
 }
 
 enum ImportMode { merge, replace }
@@ -216,7 +233,7 @@ class CsvRepository {
         return CsvImportResult(
           validItems: validItems,
           errors: [
-            CsvImportError(
+            CsvImportError.legacy(
               lineNumber: 0,
               reason: 'CSV file is empty',
               rawData: '',
@@ -232,7 +249,7 @@ class CsvRepository {
         return CsvImportResult(
           validItems: validItems,
           errors: [
-            CsvImportError(
+            CsvImportError.legacy(
               lineNumber: 1,
               reason:
                   'Invalid header format. Expected: ${_expectedHeaders.join(', ')}',
@@ -249,12 +266,12 @@ class CsvRepository {
         final lineNumber = i + 1;
 
         try {
-          final item = _parseRowToItem(row, i + 1, listId);
+          final item = _parseRowToItem(row, lineNumber, listId, errors);
           if (item != null) {
             validItems.add(item);
           }
         } catch (e) {
-          errors.add(CsvImportError(
+          errors.add(CsvImportError.legacy(
             lineNumber: lineNumber,
             reason: e.toString(),
             rawData: row.join(', '),
@@ -271,7 +288,7 @@ class CsvRepository {
       return CsvImportResult(
         validItems: validItems,
         errors: [
-          CsvImportError(
+          CsvImportError.legacy(
             lineNumber: 0,
             reason: 'Failed to parse CSV: $e',
             rawData: '',
@@ -294,29 +311,50 @@ class CsvRepository {
     return true;
   }
 
-  GroceryItem? _parseRowToItem(List<dynamic> row, int position, int listId) {
+  GroceryItem? _parseRowToItem(List<dynamic> row, int position, int listId,
+      List<CsvImportError> errors) {
     if (row.length < 6) {
-      throw Exception('Insufficient columns. Expected 6, got ${row.length}');
+      errors.add(CsvImportError(
+        lineNumber: position,
+        field: 'Row Structure',
+        value: '${row.length} columns',
+        message: 'Insufficient columns. Expected 6, got ${row.length}',
+        rawData: row.join(', '),
+      ));
+      return null;
     }
+
+    final List<CsvImportError> rowErrors = [];
+    final rawData = row.join(', ');
 
     // Parse item name (required)
     final name = row[1]?.toString().trim() ?? '';
-    if (name.isEmpty) {
-      throw Exception('Item name cannot be empty');
-    }
-
-    if (name.length > AppConstants.maxItemNameLength) {
-      throw Exception(
-          'Item name too long (max ${AppConstants.maxItemNameLength} characters)');
+    final nameValidation = ValidationUtils.validateItemName(name);
+    if (nameValidation != null) {
+      rowErrors.add(CsvImportError(
+        lineNumber: position,
+        field: 'Item Name',
+        value: name,
+        message: nameValidation,
+        rawData: rawData,
+      ));
     }
 
     // Parse quantity value (optional)
     double? qtyValue;
     final qtyValueStr = row[2]?.toString().trim() ?? '';
     if (qtyValueStr.isNotEmpty) {
-      qtyValue = double.tryParse(qtyValueStr);
-      if (qtyValue == null) {
-        throw Exception('Invalid quantity value: $qtyValueStr');
+      final qtyValidation = ValidationUtils.validateQuantityValue(qtyValueStr);
+      if (qtyValidation != null) {
+        rowErrors.add(CsvImportError(
+          lineNumber: position,
+          field: 'Quantity',
+          value: qtyValueStr,
+          message: qtyValidation,
+          rawData: rawData,
+        ));
+      } else {
+        qtyValue = double.tryParse(qtyValueStr);
       }
     }
 
@@ -324,10 +362,31 @@ class CsvRepository {
     String? qtyUnit = row[3]?.toString().trim();
     if (qtyUnit?.isEmpty == true) qtyUnit = null;
 
+    // Validate quantity/UOM relationship
+    final qtyUomValidation = ValidationUtils.validateQuantityUomRelationship(
+      qtyValue: qtyValueStr,
+      uom: qtyUnit,
+    );
+    if (qtyUomValidation != null) {
+      rowErrors.add(CsvImportError(
+        lineNumber: position,
+        field: 'Quantity/UOM',
+        value: 'Qty: $qtyValueStr, UOM: ${qtyUnit ?? '(empty)'}',
+        message: qtyUomValidation,
+        rawData: rawData,
+      ));
+    }
+
     // Validate unit if provided
     if (qtyUnit != null && !QuantityUnits.allUnits.contains(qtyUnit)) {
-      // Try to find closest match or allow free text
-      // For now, we'll allow any unit but could add fuzzy matching later
+      rowErrors.add(CsvImportError(
+        lineNumber: position,
+        field: 'Unit of Measure',
+        value: qtyUnit,
+        message:
+            'Invalid unit of measure. Please use one of the supported units.',
+        rawData: rawData,
+      ));
     }
 
     // Parse needed status (required)
@@ -341,32 +400,51 @@ class CsvRepository {
         neededStr.isEmpty) {
       needed = false;
     } else {
-      throw Exception('Invalid needed value: $neededStr. Expected Y/N');
+      rowErrors.add(CsvImportError(
+        lineNumber: position,
+        field: 'Needed',
+        value: neededStr,
+        message: 'Invalid needed value. Expected Y/N, YES/NO, 1/0',
+        rawData: rawData,
+      ));
+      needed = false; // Default fallback
     }
 
     // Parse price (optional, defaults to 0.0)
     double price = 0.0;
     final priceStr = row[5]?.toString().trim() ?? '';
     if (priceStr.isNotEmpty) {
-      final parsedPrice = double.tryParse(priceStr);
-      if (parsedPrice == null) {
-        throw Exception('Invalid price value: $priceStr');
+      final priceValidation = ValidationUtils.validatePrice(priceStr);
+      if (priceValidation != null) {
+        rowErrors.add(CsvImportError(
+          lineNumber: position,
+          field: 'Price',
+          value: priceStr,
+          message: priceValidation,
+          rawData: rawData,
+        ));
+      } else {
+        price = double.tryParse(priceStr) ?? 0.0;
       }
-      if (parsedPrice < 0 || parsedPrice > 10000) {
-        throw Exception('Price must be between 0.00 and 10000.00');
-      }
-      price = parsedPrice;
     }
 
-    return GroceryItem.create(
-      name: name,
-      qtyValue: qtyValue,
-      qtyUnit: qtyUnit,
-      needed: needed,
-      listId: listId,
-      position: position,
-      price: price,
-    );
+    // Add all row errors to the main errors list
+    errors.addAll(rowErrors);
+
+    // Only create item if there are no validation errors
+    if (rowErrors.isEmpty) {
+      return GroceryItem.create(
+        name: name,
+        qtyValue: qtyValue,
+        qtyUnit: qtyUnit,
+        needed: needed,
+        listId: listId,
+        position: position,
+        price: price,
+      );
+    }
+
+    return null;
   }
 
   List<GroceryItem> _reindexItems(List<GroceryItem> items) {

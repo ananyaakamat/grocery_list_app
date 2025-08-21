@@ -1,0 +1,9 @@
+Position,Item Name,Quantity,Unit,Needed,Price
+1,123,5,kg,Y,10.50
+2,,3,liters,Y,25.00
+3,Bread,,,Y,15.99
+4,Valid Item,2,kg,Y,12.50
+5,@#$%,10,,Y,invalid_price
+6,Another Item,5,invalid_unit,Y,99999
+7,Good Item,,liters,N,5.00
+8,Test Item,abc,kg,Y,20.00

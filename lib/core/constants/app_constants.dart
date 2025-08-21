@@ -56,7 +56,9 @@ class QuantityUnits {
     'sachets',
     'rolls',
     'pack',
-    'set'
+    'set',
+    'pound',
+    'loaf'
   ];
 
   // Semi-solids/Powders

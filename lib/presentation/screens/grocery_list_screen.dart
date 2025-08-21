@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/grocery_item.dart';
 import '../../data/models/grocery_list.dart'; // Added for CR1
+import '../../data/repositories/csv_repository.dart'; // Added for CsvImportError
 import '../providers/app_providers.dart';
 import '../widgets/grocery_item_tile.dart';
 import '../widgets/add_item_modal.dart';
@@ -791,14 +792,174 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   }
 
   void _showImportModal(BuildContext context) {
-    showDialog(
+    showDialog<dynamic>(
       context: context,
       builder: (context) => ImportCsvModal(listId: widget.groceryList.id!),
     ).then((value) {
-      // Auto-renumber and update timestamp after importing
-      _updateSerialNumbers();
-      _updateLastSaved();
+      // Check if validation errors were returned
+      if (value is List<CsvImportError>) {
+        // Show validation error dialog
+        _showValidationErrorsDialog(value);
+      } else {
+        // Auto-renumber and update timestamp after successful importing
+        _updateSerialNumbers();
+        _updateLastSaved();
+      }
     });
+  }
+
+  Future<void> _showValidationErrorsDialog(List<CsvImportError> errors) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // Cannot dismiss by tapping outside
+      useSafeArea: true,
+      builder: (BuildContext context) {
+        return PopScope(
+          canPop: false, // Prevent back button from closing
+          child: AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red),
+                SizedBox(width: 8),
+                Text('CSV Import Errors'),
+              ],
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 400,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Found ${errors.length} validation error${errors.length == 1 ? '' : 's'}. '
+                    'Please fix these errors in your CSV file and try again.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: errors.length,
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final error = errors[index];
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade100,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'Row ${error.lineNumber}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red.shade800,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (error.field != 'General') ...[
+                                          Text(
+                                            error.field,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          if (error.value.isNotEmpty) ...[
+                                            const SizedBox(height: 2),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 6,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey.shade200,
+                                                borderRadius:
+                                                    BorderRadius.circular(3),
+                                              ),
+                                              child: Text(
+                                                error.value,
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontFamily: 'monospace',
+                                                  color: Colors.grey.shade700,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          error.message,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.red.shade700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (error.rawData.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade50,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border:
+                                        Border.all(color: Colors.grey.shade300),
+                                  ),
+                                  child: Text(
+                                    'Raw data: ${error.rawData}',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontFamily: 'monospace',
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showHelpScreen(BuildContext context) {
