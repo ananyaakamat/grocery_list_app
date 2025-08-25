@@ -20,7 +20,11 @@ class HelpScreen extends StatelessWidget {
           ),
           _buildSection(
             'Managing Lists',
-            'Create multiple grocery lists from the home screen. Tap the + button to add a new list. Edit list names by tapping the edit icon. Delete lists using the delete icon with confirmation.',
+            'Create multiple grocery lists from the home screen. Tap the + button to add a new list. Edit list names by tapping the edit icon. Copy existing lists with all their items using the copy icon - perfect for creating similar shopping lists or making backups. Delete lists using the delete icon with confirmation.',
+          ),
+          _buildSection(
+            'Copy List Feature',
+            'Duplicate any grocery list instantly with the copy icon on the home screen. When you copy a list, all items including their quantities, units of measure, prices, and "needed" status are copied to the new list. The copied list gets a default name like "Copy of [Original Name]" which you can customize. This feature is perfect for creating weekly shopping lists, making backups, or sharing lists with family members.',
           ),
           _buildSection(
             'Adding Items',
@@ -145,6 +149,14 @@ class HelpScreen extends StatelessWidget {
               'A: From the home screen, tap the + button to create a new list. Each list can have its own set of items and is saved separately.',
             ),
             _buildFaqItem(
+              'Q: How do I copy a grocery list?',
+              'A: Tap the copy icon (duplicate symbol) next to any list on the home screen. Enter a name for the new list, and all items will be copied with their quantities, prices, and needed status. This creates an independent copy that you can modify separately.',
+            ),
+            _buildFaqItem(
+              'Q: What units of measure are available?',
+              'A: The app supports comprehensive units including solids (kg, g, pieces, packets, boxes, bags, pound, loaf, dozen, etc.), liquids (L, ml, bottles, cans), and small measures (tbsp, tsp, cups). Recent additions include "pound" and "loaf" for better international and bakery item support.',
+            ),
+            _buildFaqItem(
               'Q: How do I delete multiple items at once?',
               'A: Select the items you want to delete by tapping their checkboxes. The delete icon will turn red when items are selected. Press the red delete icon to remove all selected items after confirming in the dialog.',
             ),
@@ -174,7 +186,7 @@ class HelpScreen extends StatelessWidget {
             ),
             _buildFaqItem(
               'Q: How do I backup my lists?',
-              'A: Use the Export CSV feature from any list to create a backup file. You can import this file later to restore your list with all items and prices.',
+              'A: You have multiple backup options: Use the Copy List feature to create duplicates within the app, or export lists as CSV files. Both methods preserve all item details including quantities, units, prices, and needed status.',
             ),
             _buildFaqItem(
               'Q: Where is my data stored?',
@@ -203,6 +215,14 @@ class HelpScreen extends StatelessWidget {
             _buildFaqItem(
               'Q: Does the total update automatically?',
               'A: Yes! The total cost updates instantly when you add prices, mark items as needed/not needed, or delete items.',
+            ),
+            _buildFaqItem(
+              'Q: Can I create weekly shopping templates?',
+              'A: Absolutely! Create a master grocery list with all your regular items, then use the copy feature to duplicate it for each shopping trip. You can then modify the copied list as needed while keeping your template intact.',
+            ),
+            _buildFaqItem(
+              'Q: How do I backup my grocery lists?',
+              'A: You have two backup options: 1) Use the copy feature to duplicate your lists within the app, or 2) Export each list to CSV files using the export feature. Both methods preserve all your item details including prices.',
             ),
           ],
         ),
