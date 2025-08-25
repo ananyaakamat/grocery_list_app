@@ -1071,4 +1071,75 @@ class DatabaseHelper {
     final maxPosition = Sqflite.firstIntValue(result) ?? 0;
     return maxPosition + 1;
   }
+
+  // Copy a grocery list and all its items
+  Future<int> copyGroceryList(int sourceListId, String newListName) async {
+    if (kIsWeb) {
+      // For web, return a fake ID
+      return DateTime.now().millisecondsSinceEpoch;
+    }
+
+    final db = await database;
+
+    return await db.transaction<int>((txn) async {
+      // Get the source list to copy basic properties
+      final sourceListMaps = await txn.query(
+        AppConstants.groceryListsTable,
+        where: 'id = ?',
+        whereArgs: [sourceListId],
+        limit: 1,
+      );
+
+      if (sourceListMaps.isEmpty) {
+        throw Exception('Source list not found');
+      }
+
+      final sourceList = GroceryList.fromMap(sourceListMaps.first);
+
+      // Get the maximum position and add 1 for new list
+      final maxPositionResult = await txn.rawQuery(
+          'SELECT MAX(position) as max_pos FROM ${AppConstants.groceryListsTable}');
+      final maxPosition = maxPositionResult.first['max_pos'] as int? ?? -1;
+
+      // Create the new list
+      final newList = GroceryList.create(name: newListName).copyWith(
+        position: maxPosition + 1,
+        description: sourceList.description,
+        url: sourceList.url,
+      );
+
+      final newListId = await txn.insert(
+        AppConstants.groceryListsTable,
+        newList.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.abort,
+      );
+
+      // Get all items from the source list
+      final sourceItemMaps = await txn.query(
+        AppConstants.itemsTable,
+        where: 'list_id = ?',
+        whereArgs: [sourceListId],
+        orderBy: 'position ASC',
+      );
+
+      // Copy all items to the new list
+      for (final itemMap in sourceItemMaps) {
+        final sourceItem = GroceryItemExtensions.fromMap(itemMap);
+        final newItem = sourceItem.copyWith(
+          id: null, // Let database assign new ID
+          listId: newListId,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+        await txn.insert(
+          AppConstants.itemsTable,
+          newItem.toMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+
+      return newListId;
+    });
+  }
 }

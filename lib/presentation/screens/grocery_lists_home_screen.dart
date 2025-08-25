@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/validation_utils.dart';
 import '../../data/models/grocery_list.dart';
 import '../providers/app_providers.dart';
 import '../widgets/add_edit_list_modal.dart';
@@ -271,6 +272,15 @@ class _GroceryListsHomeScreenState extends ConsumerState<GroceryListsHomeScreen>
                     ),
                     IconButton(
                       icon: Icon(
+                        Icons.content_copy,
+                        color: colorScheme.secondary,
+                        size: 20,
+                      ),
+                      tooltip: 'Copy List',
+                      onPressed: () => _showCopyListModal(context, list),
+                    ),
+                    IconButton(
+                      icon: Icon(
                         Icons.delete_outline,
                         color: colorScheme.error,
                         size: 20,
@@ -455,6 +465,17 @@ class _GroceryListsHomeScreenState extends ConsumerState<GroceryListsHomeScreen>
     );
   }
 
+  void _showCopyListModal(BuildContext context, GroceryList list) {
+    showDialog<String>(
+      context: context,
+      builder: (context) => _buildCopyListDialog(context, list),
+    ).then((newListName) {
+      if (newListName != null && newListName.isNotEmpty && context.mounted) {
+        _copyList(context, list, newListName);
+      }
+    });
+  }
+
   void _showDeleteConfirmation(BuildContext context, GroceryList list) async {
     final itemCount =
         await ref.read(groceryListsProvider.notifier).getItemCount(list.id!);
@@ -543,5 +564,157 @@ class _GroceryListsHomeScreenState extends ConsumerState<GroceryListsHomeScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildCopyListDialog(BuildContext context, GroceryList list) {
+    final nameController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    String? errorMessage;
+    bool isLoading = false;
+
+    // Generate suggested name
+    nameController.text = 'Copy of ${list.name}';
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.content_copy,
+                color: Theme.of(context).colorScheme.secondary,
+              ),
+              const SizedBox(width: 8),
+              const Text('Copy Grocery List'),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Creating a copy of "${list.name}". All items will be copied to the new list.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: nameController,
+                    enabled: !isLoading,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      labelText: 'New List Name',
+                      hintText: 'Enter a name for the copied list',
+                      prefixIcon: const Icon(Icons.shopping_cart_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      errorText: errorMessage,
+                    ),
+                    validator: (value) {
+                      return ValidationUtils.validateListName(value);
+                    },
+                    onChanged: (value) {
+                      if (errorMessage != null) {
+                        setState(() {
+                          errorMessage = null;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+
+                      final newName = nameController.text.trim();
+
+                      setState(() {
+                        isLoading = true;
+                        errorMessage = null;
+                      });
+
+                      // Check for duplicate names
+                      final nameExists = await ref
+                          .read(groceryListsProvider.notifier)
+                          .nameExists(newName);
+
+                      if (!context.mounted) return;
+
+                      if (nameExists) {
+                        setState(() {
+                          errorMessage =
+                              'List name already exists. Please choose another.';
+                          isLoading = false;
+                        });
+                        return;
+                      }
+
+                      Navigator.of(context).pop(newName);
+                    },
+              child: isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Copy List'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _copyList(
+      BuildContext context, GroceryList sourceList, String newListName) async {
+    try {
+      final newListId = await ref
+          .read(groceryListsProvider.notifier)
+          .copyList(sourceList.id!, newListName);
+
+      if (!context.mounted) return;
+
+      if (newListId != null) {
+        final itemCount = await ref
+            .read(groceryListsProvider.notifier)
+            .getItemCount(sourceList.id!);
+
+        if (!context.mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Created "$newListName" with $itemCount items'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (error) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to copy list: ${error.toString()}'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
   }
 }

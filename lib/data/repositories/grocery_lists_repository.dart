@@ -10,6 +10,7 @@ abstract class GroceryListsRepository {
   Future<bool> nameExists(String name, {int? excludeId});
   Future<int> getItemCount(int listId);
   Future<void> reorderLists(List<GroceryList> reorderedLists);
+  Future<int> copyList(int sourceListId, String newListName);
 }
 
 class GroceryListsRepositoryImpl implements GroceryListsRepository {
@@ -56,5 +57,10 @@ class GroceryListsRepositoryImpl implements GroceryListsRepository {
   @override
   Future<void> reorderLists(List<GroceryList> reorderedLists) async {
     return await _databaseHelper.reorderGroceryLists(reorderedLists);
+  }
+
+  @override
+  Future<int> copyList(int sourceListId, String newListName) async {
+    return await _databaseHelper.copyGroceryList(sourceListId, newListName);
   }
 }

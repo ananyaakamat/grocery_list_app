@@ -108,6 +108,17 @@ class GroceryListsNotifier
     }
   }
 
+  Future<int?> copyList(int sourceListId, String newListName) async {
+    try {
+      final newListId = await _repository.copyList(sourceListId, newListName);
+      await loadLists(); // Refresh the list
+      return newListId;
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+      return null;
+    }
+  }
+
   Future<void> reorderLists(List<GroceryList> reorderedLists) async {
     try {
       // Update the state immediately for UI responsiveness
