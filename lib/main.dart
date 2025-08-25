@@ -8,7 +8,6 @@ import 'presentation/providers/app_providers.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
   // Lock orientation to portrait mode
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
