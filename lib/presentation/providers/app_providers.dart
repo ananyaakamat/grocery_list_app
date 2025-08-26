@@ -182,12 +182,13 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
 
   Future<void> addItem(GroceryItem item) async {
     try {
-      await _repository.add(item);
-      if (_currentListId != null) {
-        await loadItemsForList(_currentListId!);
-      } else {
-        await loadItems();
-      }
+      final newId = await _repository.add(item);
+      // Create the new item with the assigned ID
+      final newItem = item.copyWith(id: newId);
+      // Instead of full reload, add to existing state
+      final currentItems = state.value ?? [];
+      final updatedItems = [...currentItems, newItem];
+      state = AsyncValue.data(updatedItems);
       // Sort and reindex all items after adding
       await _sortAndReindexAllItems();
     } catch (error, stackTrace) {
@@ -198,13 +199,12 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
   Future<void> updateItem(GroceryItem item) async {
     try {
       await _repository.update(item);
-      if (_currentListId != null) {
-        await loadItemsForList(_currentListId!);
-      } else {
-        await loadItems();
-      }
-      // Sort and reindex all items after updating
-      await _sortAndReindexAllItems();
+      // Instead of full reload, update specific item in state
+      final currentItems = state.value ?? [];
+      final updatedItems = currentItems.map((existingItem) {
+        return existingItem.id == item.id ? item : existingItem;
+      }).toList();
+      state = AsyncValue.data(updatedItems);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -215,14 +215,12 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
       // First delete from database
       await _repository.delete(id);
 
-      // Reload items and then sort and reindex
-      if (_currentListId != null) {
-        await loadItemsForList(_currentListId!);
-      } else {
-        await loadItems();
-      }
+      // Instead of full reload, remove specific item from state
+      final currentItems = state.value ?? [];
+      final updatedItems = currentItems.where((item) => item.id != id).toList();
+      state = AsyncValue.data(updatedItems);
 
-      // Sort and reindex all remaining items
+      // Sort and reindex remaining items
       await _sortAndReindexAllItems();
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
@@ -234,14 +232,13 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
       // First delete from database
       await _repository.deleteMultiple(ids);
 
-      // Reload items and then sort and reindex
-      if (_currentListId != null) {
-        await loadItemsForList(_currentListId!);
-      } else {
-        await loadItems();
-      }
+      // Instead of full reload, remove specific items from state
+      final currentItems = state.value ?? [];
+      final updatedItems =
+          currentItems.where((item) => !ids.contains(item.id)).toList();
+      state = AsyncValue.data(updatedItems);
 
-      // Sort and reindex all remaining items
+      // Sort and reindex remaining items
       await _sortAndReindexAllItems();
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
@@ -375,16 +372,20 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
     final items = state.value ?? [];
     if (items.isEmpty) return;
 
-    // Check if all items are needed
-    final allNeeded = items.every((item) => item.needed);
+    try {
+      // Check if all items are needed
+      final allNeeded = items.every((item) => item.needed);
 
-    // Toggle all items to opposite state
-    final futures = items.map((item) async {
-      final updatedItem = item.copyWith(needed: !allNeeded);
-      await updateItem(updatedItem);
-    });
+      // Update all items in state immediately
+      final updatedItems =
+          items.map((item) => item.copyWith(needed: !allNeeded)).toList();
+      state = AsyncValue.data(updatedItems);
 
-    await Future.wait(futures);
+      // Update database in background
+      await _repository.saveAll(updatedItems);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
   }
 
   Future<void> toggleItemNeeded(int itemId) async {
@@ -392,9 +393,20 @@ class ItemsNotifier extends StateNotifier<AsyncValue<List<GroceryItem>>> {
     final itemIndex = items.indexWhere((item) => item.id == itemId);
 
     if (itemIndex != -1) {
-      final item = items[itemIndex];
-      final updatedItem = item.copyWith(needed: !item.needed);
-      await updateItem(updatedItem);
+      try {
+        final item = items[itemIndex];
+        final updatedItem = item.copyWith(needed: !item.needed);
+
+        // Update state immediately
+        final updatedItems = [...items];
+        updatedItems[itemIndex] = updatedItem;
+        state = AsyncValue.data(updatedItems);
+
+        // Update database in background
+        await _repository.update(updatedItem);
+      } catch (error, stackTrace) {
+        state = AsyncValue.error(error, stackTrace);
+      }
     }
   }
 

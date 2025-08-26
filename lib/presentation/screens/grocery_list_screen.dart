@@ -23,6 +23,7 @@ class GroceryListScreen extends ConsumerStatefulWidget {
 
 class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -42,7 +43,140 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  // Immediate scroll position preservation with jumpTo for reliability
+  Future<void> _preserveScrollPosition(
+      Future<void> Function() operation) async {
+    if (!_scrollController.hasClients) {
+      await operation();
+      return;
+    }
+
+    final currentOffset = _scrollController.offset;
+
+    // Execute the operation
+    await operation();
+
+    // Use WidgetsBinding.instance.addPostFrameCallback for more reliable timing
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restoreScrollPosition(currentOffset);
+    });
+  }
+
+  // Immediate sync scroll preservation with jumpTo
+  void _preserveScrollPositionSync(VoidCallback operation) {
+    if (!_scrollController.hasClients) {
+      operation();
+      return;
+    }
+
+    final currentOffset = _scrollController.offset;
+
+    // Execute the operation
+    operation();
+
+    // Use WidgetsBinding.instance.addPostFrameCallback for immediate restoration
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restoreScrollPosition(currentOffset);
+    });
+  }
+
+  // Helper method to restore scroll position with immediate jumpTo
+  void _restoreScrollPosition(double targetOffset) {
+    if (!mounted || !_scrollController.hasClients) return;
+
+    try {
+      final position = _scrollController.position;
+      final maxExtent = position.maxScrollExtent;
+      final minExtent = position.minScrollExtent;
+
+      // Validate and clamp the target offset
+      final clampedOffset = targetOffset.clamp(minExtent, maxExtent);
+
+      // Use jumpTo for immediate, reliable positioning
+      _scrollController.jumpTo(clampedOffset);
+    } catch (e) {
+      // Silently handle any scroll controller exceptions
+      debugPrint('Scroll restore failed: $e');
+    }
+  }
+
+  // Specialized scroll preservation for delete operations
+  Future<void> _preserveScrollPositionForDelete(
+      Future<void> Function() deleteOperation) async {
+    if (!_scrollController.hasClients) {
+      await deleteOperation();
+      return;
+    }
+
+    final currentOffset = _scrollController.offset;
+    final currentItems = ref.read(itemsProvider).value ?? [];
+    final currentItemCount = currentItems.length;
+
+    // Execute the delete operation
+    await deleteOperation();
+
+    // Give a small delay for state to settle, then use WidgetsBinding for reliable timing
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restoreScrollPositionAfterDelete(currentOffset, currentItemCount);
+    });
+  }
+
+  // Helper method to restore scroll position after delete with smart adjustment
+  void _restoreScrollPositionAfterDelete(
+      double originalOffset, int originalItemCount) {
+    if (!mounted || !_scrollController.hasClients) return;
+
+    try {
+      final position = _scrollController.position;
+      final maxExtent = position.maxScrollExtent;
+      final minExtent = position.minScrollExtent;
+
+      final newItems = ref.read(itemsProvider).value ?? [];
+      final newItemCount = newItems.length;
+
+      // Calculate adjusted scroll position
+      double adjustedOffset = originalOffset;
+
+      if (newItemCount == 0) {
+        // If all items deleted, scroll to top
+        adjustedOffset = 0;
+      } else if (newItemCount < originalItemCount && originalOffset > 0) {
+        // Conservative approach: Only adjust if we're clearly past the new list extent
+        if (originalOffset > maxExtent) {
+          // Use proportional adjustment only when necessary
+          final ratio = newItemCount / originalItemCount.toDouble();
+          adjustedOffset = originalOffset * ratio;
+        } else {
+          // If original position is still valid, keep it as is
+          adjustedOffset = originalOffset;
+        }
+
+        // Ensure we don't go below 0
+        adjustedOffset = adjustedOffset.clamp(0.0, double.infinity);
+      }
+
+      // Final clamp to valid range
+      final clampedOffset = adjustedOffset.clamp(minExtent, maxExtent);
+
+      // Use jumpTo for immediate, reliable positioning
+      _scrollController.jumpTo(clampedOffset);
+    } catch (e) {
+      debugPrint('Delete scroll restore failed: $e');
+      // Fallback: use simpler approach
+      try {
+        final maxExtent = _scrollController.position.maxScrollExtent;
+        final safeOffset = originalOffset.clamp(0.0, maxExtent);
+        _scrollController.jumpTo(safeOffset);
+      } catch (e2) {
+        debugPrint('Fallback scroll restore also failed: $e2');
+      }
+    }
   }
 
   // Method to clear search and filter state
@@ -95,10 +229,12 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
               final messenger = ScaffoldMessenger.of(context);
 
               navigator.pop();
-              await itemsNotifier.deleteSelected();
-              ref.read(appStateProvider.notifier).markUnsaved();
-              _updateSerialNumbers();
-              _updateLastSaved();
+              await _preserveScrollPositionForDelete(() async {
+                await itemsNotifier.deleteSelected();
+                ref.read(appStateProvider.notifier).markUnsaved();
+                _updateLastSaved();
+              });
+
               if (mounted) {
                 messenger.showSnackBar(
                   SnackBar(
@@ -392,6 +528,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
           child: RefreshIndicator(
             onRefresh: _refreshItems,
             child: ListView.builder(
+              key: const ValueKey('grocery_items_list'),
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.only(
                 left: 8,
                 right: 8,
@@ -400,6 +539,9 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                     100, // Add bottom padding to prevent FAB from blocking last item
               ),
               itemCount: items.length,
+              cacheExtent: 1000, // Pre-render more items for smoother scrolling
+              addAutomaticKeepAlives: true, // Keep widget states alive
+              addRepaintBoundaries: true, // Optimize repaints
               itemBuilder: (context, index) {
                 final item = items[index];
                 return Card(
@@ -435,6 +577,7 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
                       ),
                     ),
                     child: GroceryItemTile(
+                      key: ValueKey('tile_${item.id}'),
                       item: item,
                       isSelected: ref.watch(itemSelectionProvider(item.id!)),
                       onToggleNeeded: (item) => _toggleItemNeeded(item.id!),
@@ -734,28 +877,34 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
 
   // Action methods
   void _toggleSelectAll() {
-    final itemsNotifier = ref.read(itemsProvider.notifier);
-    if (itemsNotifier.allSelected) {
-      itemsNotifier.clearSelection();
-    } else {
-      itemsNotifier.selectAll();
-    }
+    _preserveScrollPositionSync(() {
+      final itemsNotifier = ref.read(itemsProvider.notifier);
+      if (itemsNotifier.allSelected) {
+        itemsNotifier.clearSelection();
+      } else {
+        itemsNotifier.selectAll();
+      }
+    });
   }
 
   void _toggleAllNeeded() {
-    ref.read(itemsProvider.notifier).toggleAllNeeded();
-    ref.read(appStateProvider.notifier).markUnsaved();
+    _preserveScrollPositionSync(() {
+      ref.read(itemsProvider.notifier).toggleAllNeeded();
+      ref.read(appStateProvider.notifier).markUnsaved();
+    });
   }
 
   void _toggleItemNeeded(int itemId) {
-    ref.read(itemsProvider.notifier).toggleItemNeeded(itemId);
-    ref.read(appStateProvider.notifier).markUnsaved();
-    // Removed _updateSerialNumbers() and _updateLastSaved() to prevent unnecessary refreshes
-    // The provider already handles the state update and timestamp is updated automatically
+    _preserveScrollPositionSync(() {
+      ref.read(itemsProvider.notifier).toggleItemNeeded(itemId);
+      ref.read(appStateProvider.notifier).markUnsaved();
+    });
   }
 
   void _toggleItemSelection(int itemId) {
-    ref.read(itemsProvider.notifier).toggleItemSelection(itemId);
+    _preserveScrollPositionSync(() {
+      ref.read(itemsProvider.notifier).toggleItemSelection(itemId);
+    });
   }
 
   void _showAddItemModal(BuildContext context) {
@@ -764,10 +913,14 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const AddItemModal(),
-    ).then((value) {
-      // Auto-renumber and update timestamp after adding item
-      _updateSerialNumbers();
-      _updateLastSaved();
+    ).then((value) async {
+      // Only preserve scroll if an item was actually added
+      if (value != null) {
+        await _preserveScrollPosition(() async {
+          _updateSerialNumbers();
+          _updateLastSaved();
+        });
+      }
     });
   }
 
@@ -777,18 +930,25 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => AddItemModal(itemToEdit: item),
-    ).then((value) {
-      // Auto-renumber and update timestamp after editing item
-      _updateSerialNumbers();
-      _updateLastSaved();
+    ).then((value) async {
+      // Only preserve scroll if the item was actually edited
+      if (value != null) {
+        await _preserveScrollPosition(() async {
+          _updateSerialNumbers();
+          _updateLastSaved();
+        });
+      }
     });
   }
 
   // Refresh method for pull-to-refresh
+  // Refresh method for pull-to-refresh with scroll preservation
   Future<void> _refreshItems() async {
-    await ref
-        .read(itemsProvider.notifier)
-        .loadItemsForList(widget.groceryList.id!);
+    await _preserveScrollPosition(() async {
+      await ref
+          .read(itemsProvider.notifier)
+          .loadItemsForList(widget.groceryList.id!);
+    });
   }
 
   void _showImportModal(BuildContext context) {
@@ -1014,13 +1174,18 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ref.read(itemsProvider.notifier).deleteItem(item.id!);
-              ref.read(appStateProvider.notifier).markUnsaved();
-              _updateSerialNumbers();
-              _updateLastSaved();
-              ScaffoldMessenger.of(context).showSnackBar(
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+
+              navigator.pop();
+              await _preserveScrollPositionForDelete(() async {
+                await ref.read(itemsProvider.notifier).deleteItem(item.id!);
+                ref.read(appStateProvider.notifier).markUnsaved();
+                _updateLastSaved();
+              });
+
+              messenger.showSnackBar(
                 SnackBar(content: Text('${item.name} deleted')),
               );
             },
@@ -1047,13 +1212,18 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ref.read(itemsProvider.notifier).deleteAllItems();
-              ref.read(appStateProvider.notifier).markUnsaved();
-              _updateSerialNumbers();
-              _updateLastSaved();
-              ScaffoldMessenger.of(context).showSnackBar(
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+
+              navigator.pop();
+              await _preserveScrollPositionForDelete(() async {
+                await ref.read(itemsProvider.notifier).deleteAllItems();
+                ref.read(appStateProvider.notifier).markUnsaved();
+                _updateLastSaved();
+              });
+
+              messenger.showSnackBar(
                 SnackBar(content: Text('All ${items.length} items deleted')),
               );
             },

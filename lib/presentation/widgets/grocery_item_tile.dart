@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/grocery_item.dart';
 
-class GroceryItemTile extends StatelessWidget {
+class GroceryItemTile extends StatefulWidget {
   final GroceryItem item;
   final Function(GroceryItem) onToggleNeeded;
   final Function(GroceryItem) onEdit;
@@ -21,7 +21,18 @@ class GroceryItemTile extends StatelessWidget {
   });
 
   @override
+  State<GroceryItemTile> createState() => _GroceryItemTileState();
+}
+
+class _GroceryItemTileState extends State<GroceryItemTile>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true; // Keep widget state alive to prevent rebuilds
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -44,7 +55,7 @@ class GroceryItemTile extends StatelessWidget {
       ),
       child: Center(
         child: Text(
-          '${item.position}',
+          '${widget.item.position}',
           style: AppTextStyles.labelMedium.copyWith(
             color: Theme.of(context).colorScheme.primary,
             fontWeight: FontWeight.w600,
@@ -60,19 +71,19 @@ class GroceryItemTile extends StatelessWidget {
       children: [
         // Item name
         Text(
-          item.name,
+          widget.item.name,
           style: AppTextStyles.bodyLarge.copyWith(
-            decoration: item.needed ? null : TextDecoration.lineThrough,
-            color: item.needed
+            decoration: widget.item.needed ? null : TextDecoration.lineThrough,
+            color: widget.item.needed
                 ? Theme.of(context).colorScheme.onSurface
                 : Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         // Price display (show only if price > 0)
-        if (item.price > 0) ...[
+        if (widget.item.price > 0) ...[
           const SizedBox(height: 2),
           Text(
-            item.formattedPrice,
+            widget.item.formattedPrice,
             style: AppTextStyles.labelMedium.copyWith(
               color: Theme.of(context).colorScheme.primary,
               fontWeight: FontWeight.w600,
@@ -84,7 +95,7 @@ class GroceryItemTile extends StatelessWidget {
   }
 
   Widget? _buildQuantity(BuildContext context) {
-    final quantity = item.formattedQuantity;
+    final quantity = widget.item.formattedQuantity;
 
     if (quantity.isEmpty) {
       return null;
@@ -112,7 +123,7 @@ class GroceryItemTile extends StatelessWidget {
           iconSize: 20,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          onPressed: () => onEdit(item),
+          onPressed: () => widget.onEdit(widget.item),
           tooltip: 'Edit',
         ),
         // Delete button
@@ -124,16 +135,16 @@ class GroceryItemTile extends StatelessWidget {
           iconSize: 20,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          onPressed: () => onDelete(item),
+          onPressed: () => widget.onDelete(widget.item),
           tooltip: 'Delete',
         ),
         // Selection checkbox (for bulk operations)
-        if (onToggleSelection != null)
+        if (widget.onToggleSelection != null)
           Transform.scale(
             scale: 1.2,
             child: Checkbox(
-              value: isSelected,
-              onChanged: (value) => onToggleSelection!(item),
+              value: widget.isSelected,
+              onChanged: (value) => widget.onToggleSelection!(widget.item),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ),
@@ -141,8 +152,8 @@ class GroceryItemTile extends StatelessWidget {
         Transform.scale(
           scale: 1.2,
           child: Checkbox(
-            value: item.needed,
-            onChanged: (value) => onToggleNeeded(item),
+            value: widget.item.needed,
+            onChanged: (value) => widget.onToggleNeeded(widget.item),
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ),
