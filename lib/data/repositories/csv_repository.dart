@@ -54,7 +54,7 @@ class CsvImportError {
   String get reason => message;
 }
 
-enum ImportMode { merge, replace }
+enum ImportMode { referenceList, merge, replace }
 
 class CsvRepository {
   static const List<String> _expectedHeaders = AppConstants.csvHeaders;
@@ -173,6 +173,10 @@ class CsvRepository {
     ImportMode mode,
   ) async {
     switch (mode) {
+      case ImportMode.referenceList:
+        // For reference list, replace all items (should only be used on blank lists)
+        return _reindexItems(newItems);
+
       case ImportMode.replace:
         return _reindexItems(newItems);
 

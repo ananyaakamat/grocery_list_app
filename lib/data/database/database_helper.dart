@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
 import '../models/grocery_item.dart';
 import '../models/grocery_list.dart'; // Added for CR1 multi-list feature
+import '../models/reference_item.dart'; // Added for reference items
 import '../../core/constants/app_constants.dart';
 
 class DatabaseHelper {
@@ -203,6 +204,10 @@ class DatabaseHelper {
       // Migration from version 5 to 6: Add description and URL fields
       await _migrateToV6(db);
     }
+    if (oldVersion < 7) {
+      // Migration from version 6 to 7: Add reference items table
+      await _migrateToV7(db);
+    }
   }
 
   Future<void> _migrateToV2(Database db) async {
@@ -397,6 +402,38 @@ class DatabaseHelper {
       debugPrint('Successfully migrated database to version 6');
     } catch (e) {
       debugPrint('Error during migration to V6: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _migrateToV7(Database db) async {
+    try {
+      debugPrint('Starting migration to V7: Adding reference items table...');
+
+      // Create reference_items table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ${AppConstants.referenceItemsTable} (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          qty_value REAL,
+          qty_unit TEXT,
+          price REAL NOT NULL DEFAULT 0.0,
+          needed INTEGER NOT NULL DEFAULT 0,
+          position INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      ''');
+
+      // Create index for position in reference_items table
+      await db.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_reference_items_position 
+        ON ${AppConstants.referenceItemsTable}(position)
+      ''');
+
+      debugPrint('Successfully migrated database to version 7');
+    } catch (e) {
+      debugPrint('Error during migration to V7: $e');
       rethrow;
     }
   }
@@ -1141,5 +1178,47 @@ class DatabaseHelper {
 
       return newListId;
     });
+  }
+
+  // Reference Items CRUD operations
+  Future<List<ReferenceItem>> getAllReferenceItems() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      AppConstants.referenceItemsTable,
+      orderBy: 'position ASC',
+    );
+
+    return List.generate(maps.length, (i) {
+      return ReferenceItemExtensions.fromMap(maps[i]);
+    });
+  }
+
+  Future<int> insertReferenceItem(ReferenceItem item) async {
+    final db = await database;
+    return await db.insert(AppConstants.referenceItemsTable, item.toMap());
+  }
+
+  Future<void> insertReferenceItems(List<ReferenceItem> items) async {
+    final db = await database;
+    final batch = db.batch();
+
+    for (final item in items) {
+      batch.insert(AppConstants.referenceItemsTable, item.toMap());
+    }
+
+    await batch.commit();
+  }
+
+  Future<void> clearReferenceItems() async {
+    final db = await database;
+    await db.delete(AppConstants.referenceItemsTable);
+  }
+
+  Future<bool> hasReferenceItems() async {
+    final db = await database;
+    final count = Sqflite.firstIntValue(await db.rawQuery(
+      'SELECT COUNT(*) FROM ${AppConstants.referenceItemsTable}',
+    ));
+    return (count ?? 0) > 0;
   }
 }

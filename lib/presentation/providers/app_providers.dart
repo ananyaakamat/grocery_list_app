@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/repositories/items_repository.dart';
 import '../../data/repositories/csv_repository.dart';
+import '../../data/repositories/reference_item_repository.dart';
 import '../../data/repositories/grocery_lists_repository.dart'; // Added for CR1
 import '../../data/models/grocery_item.dart';
 import '../../data/models/grocery_list.dart'; // Added for CR1
@@ -34,6 +35,11 @@ final itemsRepositoryProvider = Provider<ItemsRepository>((ref) {
 
 final csvRepositoryProvider = Provider<CsvRepository>((ref) {
   return CsvRepository();
+});
+
+final referenceItemRepositoryProvider =
+    Provider<ReferenceItemRepository>((ref) {
+  return ReferenceItemRepository();
 });
 
 // Added for CR1: Grocery Lists Repository Provider

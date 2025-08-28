@@ -51,6 +51,10 @@ class HelpScreen extends StatelessWidget {
             'Tap the import icon to import items from a CSV file or download a sample template. Your CSV files can now include prices! Choose "Merge" to add items to your current list or "Replace" to clear the list first. Export your lists as CSV files to backup your data or share with others. The export includes all item information including prices.',
           ),
           _buildSection(
+            'Grocery Reference List (Smart Import)',
+            'The "Grocery Reference List" is a curated collection of common grocery items built into the app. This smart import feature adds 100+ commonly purchased items to your list instantly, saving you time typing. The reference list includes categorized items like fruits, vegetables, dairy, meat, household essentials, and more. Each item comes with suggested quantities and units of measure. Use this feature to:\n\n• Quickly create comprehensive shopping lists\n• Get ideas for items you might have forgotten\n• Start with a complete template and customize as needed\n• Save time on weekly grocery planning\n\nThis is especially helpful for new users or when planning large shopping trips. The imported items are fully editable - you can modify quantities, prices, and needed status after import.',
+          ),
+          _buildSection(
             'Recipe Details & Website Links',
             'Use the Recipe Details icon (restaurant menu) to add descriptions and website links to your grocery lists. This is perfect for storing recipe notes, cooking instructions, or YouTube cooking video links. Click the restaurant menu icon in the toolbar to add a description and website URL. Saved URLs become clickable links that open in your browser or YouTube app. The description field is great for storing recipe details, cooking notes, or shopping reminders. Both fields automatically trim extra spaces for clean storage.',
           ),
@@ -183,6 +187,22 @@ class HelpScreen extends StatelessWidget {
             _buildFaqItem(
               'Q: CSV import failed?',
               'A: Check that your CSV has the correct headers: Sl No, Item, Qty Value, Qty Unit, Needed, Price. Use the "Export Sample Template" option to get the right format.',
+            ),
+            _buildFaqItem(
+              'Q: What is the Grocery Reference List?',
+              'A: It\'s a built-in collection of 100+ common grocery items that you can import instantly. This saves time by providing a comprehensive starting point for your shopping list.',
+            ),
+            _buildFaqItem(
+              'Q: How do I use the Grocery Reference List?',
+              'A: Tap the import icon and select "Grocery Reference List (For 2A + 2C)" - the recommended option. This imports all reference items which you can then customize by editing quantities, adding prices, and marking items as needed.',
+            ),
+            _buildFaqItem(
+              'Q: Can I modify items from the Reference List?',
+              'A: Absolutely! Once imported, reference list items become regular grocery items. You can edit their names, quantities, prices, units, and needed status just like manually added items.',
+            ),
+            _buildFaqItem(
+              'Q: Does the Reference List include prices?',
+              'A: Yes, but it\'s better to update them as per your purchase pattern like online or offline, as prices differ slightly on various online platforms or offline grocery shops, location, etc. The reference prices provide a starting point, but you should adjust them based on your preferred shopping method and local market rates.',
             ),
             _buildFaqItem(
               'Q: How do I backup my lists?',

@@ -5,13 +5,13 @@ class AppConstants {
 
   // Database
   static const String databaseName = 'annadaata_grocery.db';
-  static const int databaseVersion =
-      6; // Updated to add description and URL fields
+  static const int databaseVersion = 7; // Updated to add reference items table
 
   // Tables
   static const String itemsTable = 'items';
   static const String groceryListsTable = 'grocery_lists';
   static const String appMetaTable = 'app_meta';
+  static const String referenceItemsTable = 'reference_items';
 
   // CSV
   static const String csvPrefix = 'annadaata_grocery_';

@@ -37,8 +37,7 @@ class _ImportCsvModalState extends ConsumerState<ImportCsvModal> {
       ),
       content: SingleChildScrollView(
         child: SizedBox(
-          width:
-              MediaQuery.of(context).size.width * 0.9, // Increased dialog width
+          width: MediaQuery.of(context).size.width * 0.8,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,7 +64,7 @@ class _ImportCsvModalState extends ConsumerState<ImportCsvModal> {
           onPressed: _isLoading ? null : _handleAction,
           style: ElevatedButton.styleFrom(
             backgroundColor: _getActionColor(),
-            foregroundColor: _getActionTextColor(), // Use dynamic text color
+            foregroundColor: Colors.white,
           ),
           child: _isLoading
               ? const SizedBox(
@@ -89,9 +88,8 @@ class _ImportCsvModalState extends ConsumerState<ImportCsvModal> {
         // Option 1: Grocery Reference List (For 2A + 2C) - FIRST
         _buildActionCard(
           action: ImportAction.referenceList,
-          title: 'Grocery Reference List',
-          subtitle:
-              'Load predefined default items (For 2A + 2C) into your blank list',
+          title: 'Grocery Reference List (For 2A + 2C)',
+          subtitle: 'Load predefined default items into your blank list',
           icon: Icons.list_alt,
           color: Theme.of(context).colorScheme.primary,
           isRecommended: true,
@@ -128,7 +126,7 @@ class _ImportCsvModalState extends ConsumerState<ImportCsvModal> {
           title: 'Export CSV template',
           subtitle: 'Download a sample CSV template with example items',
           icon: Icons.download,
-          color: Theme.of(context).colorScheme.secondary,
+          color: Theme.of(context).colorScheme.outline,
         ),
       ],
     );
@@ -148,11 +146,7 @@ class _ImportCsvModalState extends ConsumerState<ImportCsvModal> {
       onTap: () => setState(() => _selectedAction = action),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(20), // Increased from 16 to 20
-        constraints: const BoxConstraints(
-          minHeight:
-              160, // Increased from 140 to accommodate 5 lines of explaining text
-        ),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           border: Border.all(
             color: isSelected
@@ -196,9 +190,7 @@ class _ImportCsvModalState extends ConsumerState<ImportCsvModal> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title row with proper spacing
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
@@ -208,35 +200,29 @@ class _ImportCsvModalState extends ConsumerState<ImportCsvModal> {
                                 isSelected ? FontWeight.w600 : FontWeight.w500,
                             color: isSelected ? color : null,
                           ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: true,
                         ),
                       ),
-                      // Recommended label in the same row but properly spaced
                       if (isRecommended) ...[
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: color,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Text(
-                            'REC',
-                            style: TextStyle(
-                              fontSize: 8,
+                          child: Text(
+                            'RECOMMENDED',
+                            style: AppTextStyles.labelMedium.copyWith(
                               color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.1,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                       ],
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: AppTextStyles.bodySmall.copyWith(
@@ -245,10 +231,6 @@ class _ImportCsvModalState extends ConsumerState<ImportCsvModal> {
                           .onSurface
                           .withOpacity(0.7),
                     ),
-                    maxLines:
-                        5, // Increased from 3 to 5 for full explaining text visibility
-                    overflow: TextOverflow.ellipsis,
-                    softWrap: true,
                   ),
                 ],
               ),
@@ -268,18 +250,7 @@ class _ImportCsvModalState extends ConsumerState<ImportCsvModal> {
       case ImportAction.importReplace:
         return Theme.of(context).colorScheme.tertiary;
       case ImportAction.exportTemplate:
-        // Use a more visible color for export template
-        return Theme.of(context).colorScheme.secondary;
-    }
-  }
-
-  Color _getActionTextColor() {
-    switch (_selectedAction) {
-      case ImportAction.referenceList:
-      case ImportAction.importMerge:
-      case ImportAction.importReplace:
-      case ImportAction.exportTemplate:
-        return Colors.white;
+        return Theme.of(context).colorScheme.outline;
     }
   }
 
