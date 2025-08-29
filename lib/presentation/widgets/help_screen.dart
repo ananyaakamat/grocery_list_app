@@ -186,7 +186,7 @@ class HelpScreen extends StatelessWidget {
             ),
             _buildFaqItem(
               'Q: CSV import failed?',
-              'A: Check that your CSV has the correct headers: Sl No, Item, Qty Value, Qty Unit, Needed, Price. Use the "Export Sample Template" option to get the right format.',
+              'A: Check that your CSV has the correct headers: Sl No, Item, Qty Value, Qty Unit, Needed, Price. Use the "Export CSV template" option to download a comprehensive sample with 20 grocery items that you can use as a reference format.',
             ),
             _buildFaqItem(
               'Q: What is the Grocery Reference List?',
@@ -203,6 +203,10 @@ class HelpScreen extends StatelessWidget {
             _buildFaqItem(
               'Q: Does the Reference List include prices?',
               'A: Yes, but it\'s better to update them as per your purchase pattern like online or offline, as prices differ slightly on various online platforms or offline grocery shops, location, etc. The reference prices provide a starting point, but you should adjust them based on your preferred shopping method and local market rates.',
+            ),
+            _buildFaqItem(
+              'Q: What does the CSV sample template contain?',
+              'A: The sample template includes 20 real grocery items with names, quantities, units, needed status, and prices. It demonstrates proper CSV formatting and serves as a reference for creating your own grocery lists. The template file is named "Grocery_List_CSV_Sample_Template_[Date]_[Time].csv".',
             ),
             _buildFaqItem(
               'Q: How do I backup my lists?',

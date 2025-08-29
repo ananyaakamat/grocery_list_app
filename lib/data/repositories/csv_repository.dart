@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../models/grocery_item.dart';
 import '../../core/constants/app_constants.dart';
@@ -113,13 +114,18 @@ class CsvRepository {
   // Export sample template
   Future<void> exportSampleTemplate() async {
     try {
-      final csvData = _generateSampleTemplateData();
+      final csvData = await _loadSampleTemplateData();
       final csvString = const ListToCsvConverter().convert(csvData);
 
-      // Generate filename with timestamp
-      final timestamp = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+      // Generate filename with new format: Grocery_List_CSV_Sample_Template_DateTime.csv
+      final now = DateTime.now();
+      final dateStr = DateFormat('dMMMy').format(now); // 29Aug2025
+      final timeStr = DateFormat('h_mmaa')
+          .format(now)
+          .toUpperCase(); // 10_00AM (uppercase AM/PM)
+
       final filename =
-          'grocery_sample_template_$timestamp${AppConstants.csvExtension}';
+          'Grocery_List_CSV_Sample_Template_${dateStr}_$timeStr${AppConstants.csvExtension}';
 
       if (kIsWeb) {
         // For web, we need to implement download functionality differently
@@ -216,21 +222,33 @@ class CsvRepository {
     return csvData;
   }
 
-  // Generate template CSV data with clear indication that Sl No is auto-generated
-  List<List<dynamic>> _generateSampleTemplateData() {
-    final csvData = <List<dynamic>>[];
+  // Load sample template data from assets
+  Future<List<List<dynamic>>> _loadSampleTemplateData() async {
+    try {
+      // Load the sample template from assets
+      final String csvContent = await rootBundle
+          .loadString('assets/Grocery_List_CSV_Sample_Template.csv');
 
-    // Add header row (keep full format for import compatibility)
-    csvData.add(_expectedHeaders);
+      // Parse the CSV content
+      final List<List<dynamic>> csvData =
+          const CsvToListConverter().convert(csvContent);
 
-    // Add sample data rows with placeholder Sl No values
-    // The import logic ignores Sl No column anyway and auto-generates positions
-    csvData.add(['1', 'Apples', '2', 'kg', 'Y', '150.00']);
-    csvData.add(['2', 'Milk', '1', 'liter', 'Y', '60.00']);
-    csvData.add(['3', 'Bread', '', 'loaf', 'N']);
-    csvData.add(['4', 'Eggs', '12', 'pieces', 'Y']);
+      return csvData;
+    } catch (e) {
+      // Fallback to basic sample data if asset loading fails
+      final csvData = <List<dynamic>>[];
 
-    return csvData;
+      // Add header row
+      csvData.add(_expectedHeaders);
+
+      // Add basic sample data
+      csvData.add(['1', 'Apples', '2', 'kg', 'Y', '150.00']);
+      csvData.add(['2', 'Milk', '1', 'liter', 'Y', '60.00']);
+      csvData.add(['3', 'Bread', '', 'loaf', 'N']);
+      csvData.add(['4', 'Eggs', '12', 'pieces', 'Y']);
+
+      return csvData;
+    }
   }
 
   CsvImportResult _parseCsvContent(String csvContent, int listId) {
