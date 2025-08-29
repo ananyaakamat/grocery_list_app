@@ -1244,13 +1244,18 @@ class _GroceryListScreenState extends ConsumerState<GroceryListScreen> {
       // Use filtered items instead of all items
       final items = ref.read(filteredItemsProvider).value ?? [];
       final csvRepository = ref.read(csvRepositoryProvider);
+      final currentFilter = ref.read(itemFilterProvider);
 
-      // Pass the list name for custom filename format
-      await csvRepository.exportToCsv(items, listName: widget.groceryList.name);
+      // Pass the list name and current filter type for custom filename format
+      await csvRepository.exportToCsv(
+        items,
+        listName: widget.groceryList.name,
+        filterType: _getFilterLabel(currentFilter),
+      );
 
       if (mounted) {
-        final filterName = ref.read(itemFilterProvider) != ItemFilter.all
-            ? ' (${_getFilterLabel(ref.read(itemFilterProvider))} filter applied)'
+        final filterName = currentFilter != ItemFilter.all
+            ? ' (${_getFilterLabel(currentFilter)} filter applied)'
             : '';
         messenger.showSnackBar(
           SnackBar(content: Text('CSV exported successfully$filterName')),

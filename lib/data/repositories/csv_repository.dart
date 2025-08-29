@@ -60,26 +60,33 @@ class CsvRepository {
   static const List<String> _expectedHeaders = AppConstants.csvHeaders;
 
   // Export functionality
-  Future<void> exportToCsv(List<GroceryItem> items, {String? listName}) async {
+  Future<void> exportToCsv(List<GroceryItem> items,
+      {String? listName, String? filterType}) async {
     try {
       final csvData = _generateCsvData(items);
       final csvString = const ListToCsvConverter().convert(csvData);
 
-      // Generate filename with custom format: ListName_Date_Time.csv
+      // Generate filename with custom format: ListName_FilterType_Date_Time.csv
       final now = DateTime.now();
-      final dateStr = DateFormat('dMMMy').format(now); // 19Aug25
+      final dateStr = DateFormat('dMMMy').format(now); // 29Aug2025
       final timeStr = DateFormat('h_mmaa')
           .format(now)
-          .toUpperCase(); // 2_05AM (uppercase AM/PM)
+          .toUpperCase(); // 10_00AM (uppercase AM/PM)
 
       // Clean list name for filename (remove special characters)
-      final cleanListName = (listName ?? 'Grocery List')
+      final cleanListName = (listName ?? 'GroceryList')
           .replaceAll(RegExp(r'[^\w\s-]'), '')
-          .replaceAll(RegExp(r'\s+'), ' ')
+          .replaceAll(RegExp(r'\s+'), '')
+          .trim();
+
+      // Clean filter type for filename (remove spaces and special characters)
+      final cleanFilterType = (filterType ?? 'All')
+          .replaceAll(RegExp(r'[^\w\s-]'), '')
+          .replaceAll(RegExp(r'\s+'), '')
           .trim();
 
       final filename =
-          '${cleanListName}_${dateStr}_$timeStr${AppConstants.csvExtension}';
+          '${cleanListName}_${cleanFilterType}_${dateStr}_$timeStr${AppConstants.csvExtension}';
 
       if (kIsWeb) {
         // For web, we need to implement download functionality differently
