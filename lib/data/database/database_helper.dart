@@ -174,6 +174,27 @@ class DatabaseHelper {
       )
     ''');
 
+    // Create reference_items table (for new installations)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${AppConstants.referenceItemsTable} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        qty_value REAL,
+        qty_unit TEXT,
+        price REAL NOT NULL DEFAULT 0.0,
+        needed INTEGER NOT NULL DEFAULT 0,
+        position INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    // Create index for position in reference_items table
+    await db.execute('''
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_reference_items_position 
+      ON ${AppConstants.referenceItemsTable}(position)
+    ''');
+
     // Insert default grocery list for new installations
     await db.insert(AppConstants.groceryListsTable, {
       'name': 'My List',
@@ -1215,10 +1236,24 @@ class DatabaseHelper {
   }
 
   Future<bool> hasReferenceItems() async {
-    final db = await database;
-    final count = Sqflite.firstIntValue(await db.rawQuery(
-      'SELECT COUNT(*) FROM ${AppConstants.referenceItemsTable}',
-    ));
-    return (count ?? 0) > 0;
+    try {
+      final db = await database;
+      final count = Sqflite.firstIntValue(await db.rawQuery(
+        'SELECT COUNT(*) FROM ${AppConstants.referenceItemsTable}',
+      ));
+      return (count ?? 0) > 0;
+    } catch (e) {
+      // If table doesn't exist (e.g., after Clear Data), return false
+      // This will trigger the CSV loading process which will create the table
+      if (e
+          .toString()
+          .contains('no such table: ${AppConstants.referenceItemsTable}')) {
+        debugPrint(
+            'Reference items table does not exist, will create during CSV import');
+        return false;
+      }
+      // Re-throw other database errors
+      rethrow;
+    }
   }
 }
